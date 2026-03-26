@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { useFormFields } from '@/hooks/useFormFields'
 import { useSlots } from '@/hooks/useSlots'
 import { usePublishedForm } from '@/hooks/usePublishedForm'
+import { useApp } from '@/context/AppContext'
 import Modal from '@/components/Modal'
 import Icon from '@/components/Icon'
 
 const EMPTY_FIELD = { label: '', field_type: 'text', required: false, options: '' }
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
 const fmtSlot = (iso) => new Date(iso).toLocaleDateString('en-GB', {
   weekday: 'short', day: 'numeric', month: 'short',
@@ -13,18 +15,33 @@ const fmtSlot = (iso) => new Date(iso).toLocaleDateString('en-GB', {
 })
 
 export default function IntakeForm() {
+  const { workspace }                                                = useApp()
   const { fields, loading, add, remove, reorder }                    = useFormFields()
-  const { slots, addSlot, removeSlot }                               = useSlots()
+  const { slots, addSlot, removeSlot, refetch: refetchSlots }        = useSlots()
   const { publishedForm, loading: pubLoading, publish, unpublish }   = usePublishedForm()
 
-  const [tab, setTab]           = useState('builder')
-  const [showAdd, setShowAdd]   = useState(false)
-  const [showSlot, setShowSlot] = useState(false)
-  const [newF, setNewF]         = useState(EMPTY_FIELD)
-  const [newSlot, setNewSlot]   = useState({ starts_at: '', duration_minutes: 60, meet_link: '' })
-  const [preview, setPreview]   = useState({})
-  const [copied, setCopied]     = useState(false)
+  const [tab, setTab]               = useState('builder')
+  const [showAdd, setShowAdd]       = useState(false)
+  const [showSlot, setShowSlot]     = useState(false)
+  const [showWindow, setShowWindow] = useState(false)
+  const [newF, setNewF]             = useState(EMPTY_FIELD)
+  const [newSlot, setNewSlot]       = useState({ starts_at: '', duration_minutes: 60, meet_link: '' })
+  const [preview, setPreview]       = useState({})
+  const [copied, setCopied]         = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [genResult, setGenResult]   = useState(null)
+
+  // Availability window state
+  const [window_, setWindow_] = useState({
+    dateFrom:        '',
+    dateTo:          '',
+    timeFrom:        '09:00',
+    timeTo:          '17:00',
+    durationMinutes: 60,
+    bufferMinutes:   15,
+    daysOfWeek:      [1,2,3,4,5],
+  })
 
   const formUrl = publishedForm
     ? `${window.location.origin}/f/${publishedForm.id}`
@@ -69,6 +86,33 @@ export default function IntakeForm() {
       setNewSlot({ starts_at: '', duration_minutes: 60, meet_link: '' })
       setShowSlot(false)
     } catch (e) { alert(e.message) }
+  }
+
+  const toggleDay = (d) => {
+    setWindow_(w => ({
+      ...w,
+      daysOfWeek: w.daysOfWeek.includes(d)
+        ? w.daysOfWeek.filter(x => x !== d)
+        : [...w.daysOfWeek, d].sort()
+    }))
+  }
+
+  const handleGenerateSlots = async () => {
+    if (!window_.dateFrom || !window_.dateTo || !window_.daysOfWeek.length) return
+    setGenerating(true); setGenResult(null)
+    try {
+      const res = await fetch('/api/generate-slots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspaceId: workspace.id, ...window_ }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setGenResult(data.created)
+      await refetchSlots()
+      setTimeout(() => { setShowWindow(false); setGenResult(null) }, 1500)
+    } catch (e) { alert(e.message) }
+    setGenerating(false)
   }
 
   return (
@@ -163,15 +207,20 @@ export default function IntakeForm() {
       {tab === 'slots' && (
         <div>
           <div className="flex items-center justify-between mb-4">
-            <p className="muted text-sm">Open time slots day by day. Participants pick one after submitting the form.</p>
-            <button className="btn btn-primary" onClick={() => setShowSlot(true)}>
-              <Icon name="plus" size={14} /> Add slot
-            </button>
+            <p className="muted text-sm">Auto-generate slots from an availability window, or add individual slots manually.</p>
+            <div className="flex gap-2">
+              <button className="btn btn-primary" onClick={() => setShowWindow(true)}>
+                <Icon name="calendar" size={14} /> Set availability window
+              </button>
+              <button className="btn btn-ghost" onClick={() => setShowSlot(true)}>
+                <Icon name="plus" size={14} /> Add single slot
+              </button>
+            </div>
           </div>
           <div className="flex-col gap-2">
             {slots.length === 0 && (
               <div className="card" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 48 }}>
-                No slots open yet. Add slots so participants can book immediately after submitting.
+                No slots open yet. Set an availability window to auto-generate slots.
               </div>
             )}
             {slots.map(s => (
@@ -179,11 +228,12 @@ export default function IntakeForm() {
                 <div>
                   <strong style={{ fontSize: 13.5 }}>{fmtSlot(s.starts_at)}</strong>
                   <div className="text-xs muted mt-1">
-                    {s.duration_minutes} min{s.meet_link ? ` · ${s.meet_link}` : ''}
+                    {s.duration_minutes} min
+                    {s.meet_link ? <span style={{ color: 'var(--green)', marginLeft: 8 }}>● Meet link ready</span> : ''}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`badge ${s.available ? 'badge-green' : 'badge-red'}`}>
+                  <span className={`badge ${s.available ? 'badge-green' : 'badge-blue'}`}>
                     {s.available ? 'Available' : 'Booked'}
                   </span>
                   {s.available && (
@@ -292,6 +342,88 @@ export default function IntakeForm() {
           </div>
         </Modal>
       )}
+      {/* Availability window modal */}
+      {showWindow && (
+        <Modal title="Set availability window" onClose={() => setShowWindow(false)} maxWidth={560}>
+          <p className="text-sm muted" style={{ marginBottom: 20 }}>
+            Define a date range and working hours. Slots will be automatically generated and opened for booking.
+          </p>
+          <div className="flex-col gap-3">
+            <div className="grid-2">
+              <div className="field"><label>From date</label>
+                <input type="date" value={window_.dateFrom} onChange={e => setWindow_(w => ({ ...w, dateFrom: e.target.value }))} />
+              </div>
+              <div className="field"><label>To date</label>
+                <input type="date" value={window_.dateTo} onChange={e => setWindow_(w => ({ ...w, dateTo: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid-2">
+              <div className="field"><label>Start time</label>
+                <input type="time" value={window_.timeFrom} onChange={e => setWindow_(w => ({ ...w, timeFrom: e.target.value }))} />
+              </div>
+              <div className="field"><label>End time</label>
+                <input type="time" value={window_.timeTo} onChange={e => setWindow_(w => ({ ...w, timeTo: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid-2">
+              <div className="field"><label>Slot duration (minutes)</label>
+                <select value={window_.durationMinutes} onChange={e => setWindow_(w => ({ ...w, durationMinutes: Number(e.target.value) }))}>
+                  {[15,20,30,45,60,90,120].map(m => <option key={m} value={m}>{m} min</option>)}
+                </select>
+              </div>
+              <div className="field"><label>Buffer between slots (minutes)</label>
+                <select value={window_.bufferMinutes} onChange={e => setWindow_(w => ({ ...w, bufferMinutes: Number(e.target.value) }))}>
+                  {[0,5,10,15,20,30].map(m => <option key={m} value={m}>{m === 0 ? 'None' : `${m} min`}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="field">
+              <label>Days of week</label>
+              <div className="flex gap-2 mt-1">
+                {DAYS.map((d, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleDay(i)}
+                    style={{
+                      padding: '6px 10px', borderRadius: 'var(--r-sm)', fontSize: 12.5, fontWeight: 500,
+                      border: '1px solid',
+                      borderColor: window_.daysOfWeek.includes(i) ? 'var(--accent)' : 'var(--border-base)',
+                      background:  window_.daysOfWeek.includes(i) ? 'var(--accent-glow)' : 'transparent',
+                      color:       window_.daysOfWeek.includes(i) ? 'var(--accent-light)' : 'var(--text-secondary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Preview count */}
+            {window_.dateFrom && window_.dateTo && window_.daysOfWeek.length > 0 && (
+              <div style={{ background: 'var(--bg-raised)', borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                {genResult !== null
+                  ? <span style={{ color: 'var(--green)' }}>✓ {genResult} slots created successfully</span>
+                  : <>Will generate slots from <strong style={{ color: 'var(--text-primary)' }}>{window_.timeFrom}</strong> to <strong style={{ color: 'var(--text-primary)' }}>{window_.timeTo}</strong> every <strong style={{ color: 'var(--text-primary)' }}>{window_.durationMinutes + window_.bufferMinutes} minutes</strong> on selected days.</>
+                }
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3 mt-4" style={{ justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" onClick={() => setShowWindow(false)}>Cancel</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleGenerateSlots}
+              disabled={generating || !window_.dateFrom || !window_.dateTo || !window_.daysOfWeek.length}
+            >
+              <Icon name="calendar" size={14} />
+              {generating ? 'Generating…' : 'Generate slots'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
     </div>
   )
 }

@@ -42,7 +42,8 @@ export function AppProvider({ children }) {
     }
 
     setUser(u)
-    await ensureWorkspace(u)
+    const ws = await ensureWorkspace(u)
+    if (ws) await saveGoogleToken(u, ws.id)
     setAuthLoading(false)
   }
 
@@ -65,6 +66,7 @@ export function AppProvider({ children }) {
     }
 
     setWorkspace(data)
+    return data
   }
 
   async function signInWithGoogle() {
@@ -73,11 +75,36 @@ export function AppProvider({ children }) {
       provider: 'google',
       options: {
         redirectTo: window.location.origin,
+        scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar',
         queryParams: {
-          hd: 'betty.com' // hint Google to show betty.com accounts first
+          hd:             'betty.com',
+          access_type:    'offline',   // get refresh_token
+          prompt:         'consent',   // always show consent so we get refresh_token
         }
       }
     })
+  }
+
+  // Save Google token to backend after login so Calendar API can use it server-side
+  async function saveGoogleToken(u, wid) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.provider_token) return
+
+      await fetch('/api/save-google-token', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId:  wid,
+          accessToken:  session.provider_token,
+          refreshToken: session.provider_refresh_token || null,
+          expiresIn:    session.expires_in || 3600,
+          email:        u.email,
+        }),
+      })
+    } catch (e) {
+      console.warn('Could not save Google token:', e.message)
+    }
   }
 
   async function signOut() {

@@ -190,3 +190,41 @@ create policy "public_read_published_forms" on published_forms
 
 create policy "public_read_slots" on slots
   for select using (available = true);
+
+-- ================================================================
+-- ADDITIONS: google_tokens + availability_windows
+-- ================================================================
+
+-- Store Google OAuth tokens per workspace (for Calendar API)
+create table if not exists google_tokens (
+  id             uuid primary key default uuid_generate_v4(),
+  workspace_id   uuid not null references workspaces(id) on delete cascade,
+  access_token   text not null,
+  refresh_token  text,
+  expiry         timestamptz,
+  email          text,
+  updated_at     timestamptz default now(),
+  unique(workspace_id)
+);
+
+alter table google_tokens enable row level security;
+create policy "own_google_tokens" on google_tokens for all using (
+  workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+-- Availability windows (generates slots automatically)
+create table if not exists availability_windows (
+  id               uuid primary key default uuid_generate_v4(),
+  workspace_id     uuid not null references workspaces(id) on delete cascade,
+  date_from        date not null,
+  date_to          date not null,
+  time_from        time not null,
+  time_to          time not null,
+  duration_minutes integer not null default 60,
+  buffer_minutes   integer not null default 0,
+  days_of_week     integer[] default '{1,2,3,4,5}', -- 0=Sun, 1=Mon ... 6=Sat
+  created_at       timestamptz default now()
+);
+
+alter table availability_windows enable row level security;
+create policy "own_availability_windows" on availability_windows for all using (
+  workspace_id in (select id from workspaces where user_id = auth.uid()));

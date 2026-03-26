@@ -72,7 +72,44 @@ export default async function handler(req, res) {
       )
     }
 
-    // 5. Load and fire comms templates for this workspace
+    // 5. Create Google Calendar event with Meet link
+    let meetLink = slot?.meet_link || ''
+    let calendarEventId = null
+
+    try {
+      const calRes = await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/create-calendar-event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId:      form.workspace_id,
+          participantName:  name,
+          participantEmail: email,
+          startsAt:         slot?.starts_at,
+          durationMinutes:  slot?.duration_minutes || 60,
+          title:            `Research Interview — ${name}`,
+        }),
+      })
+      const calData = await calRes.json()
+      if (calData.meetLink) {
+        meetLink       = calData.meetLink
+        calendarEventId = calData.eventId
+
+        // Update slot and participant with real meet link
+        await fetch(`${SUPABASE_URL}/rest/v1/slots?id=eq.${slotId}`, {
+          method: 'PATCH', headers,
+          body: JSON.stringify({ meet_link: meetLink }),
+        })
+        await fetch(`${SUPABASE_URL}/rest/v1/participants?id=eq.${participant.id}`, {
+          method: 'PATCH', headers,
+          body: JSON.stringify({ meet_link: meetLink }),
+        })
+      }
+    } catch (calErr) {
+      console.warn('Calendar event creation failed:', calErr.message)
+      // Non-fatal — continue with booking even if calendar fails
+    }
+
+    // 6. Load and fire comms templates for this workspace
     const tmplRes = await fetch(
       `${SUPABASE_URL}/rest/v1/templates?workspace_id=eq.${form.workspace_id}&select=*`,
       { headers }
