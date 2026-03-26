@@ -1,0 +1,31 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+  background: var(--bg-base);
+}
+
+/* Page content wrapper — every page uses this */
+:global(.page) {
+  padding: 32px 36px;
+  max-width: 1140px;
+}
+
+:global(.page-header) {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+:global(.page-title) {}
+:global(.page-title p) {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin-top: 4px;
+}
