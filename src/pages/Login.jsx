@@ -14,10 +14,10 @@ export default function Login() {
         {/* Logo */}
         <div style={{ marginBottom: 40 }}>
           <div style={{
-            fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 800,
-            letterSpacing: '-1px', color: 'var(--text-primary)'
+            fontSize: 32, fontWeight: 700,
+            letterSpacing: '-0.8px', color: 'var(--text-primary)'
           }}>
-            Interview<span style={{ color: 'var(--accent-light)' }}>OS</span>
+            Interview<span style={{ color: 'var(--accent)' }}>OS</span>
           </div>
           <p style={{ color: 'var(--text-tertiary)', fontSize: 14, marginTop: 6 }}>
             Research platform
@@ -38,7 +38,7 @@ export default function Login() {
 
           {authError && (
             <div style={{
-              background: 'rgba(240,79,79,0.08)', border: '1px solid rgba(240,79,79,0.2)',
+              background: '#fee2e2', border: '1px solid #fecaca',
               borderRadius: 'var(--r-md)', padding: '10px 14px',
               color: 'var(--red)', fontSize: 13, marginBottom: 20
             }}>

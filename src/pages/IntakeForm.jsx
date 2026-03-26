@@ -1,23 +1,55 @@
 import { useState } from 'react'
 import { useFormFields } from '@/hooks/useFormFields'
+import { useSlots } from '@/hooks/useSlots'
+import { usePublishedForm } from '@/hooks/usePublishedForm'
 import Modal from '@/components/Modal'
 import Icon from '@/components/Icon'
 
 const EMPTY_FIELD = { label: '', field_type: 'text', required: false, options: '' }
 
+const fmtSlot = (iso) => new Date(iso).toLocaleDateString('en-GB', {
+  weekday: 'short', day: 'numeric', month: 'short',
+  hour: '2-digit', minute: '2-digit'
+})
+
 export default function IntakeForm() {
-  const { fields, loading, add, remove, reorder } = useFormFields()
-  const [tab, setTab]         = useState('builder')
-  const [showAdd, setShowAdd] = useState(false)
-  const [newF, setNewF]       = useState(EMPTY_FIELD)
-  const [preview, setPreview] = useState({})
-  const [copied, setCopied]   = useState(false)
-  const [saving, setSaving]   = useState(false)
+  const { fields, loading, add, remove, reorder }                    = useFormFields()
+  const { slots, addSlot, removeSlot }                               = useSlots()
+  const { publishedForm, loading: pubLoading, publish, unpublish }   = usePublishedForm()
 
-  const formUrl = `${window.location.origin}/intake`
+  const [tab, setTab]           = useState('builder')
+  const [showAdd, setShowAdd]   = useState(false)
+  const [showSlot, setShowSlot] = useState(false)
+  const [newF, setNewF]         = useState(EMPTY_FIELD)
+  const [newSlot, setNewSlot]   = useState({ starts_at: '', duration_minutes: 60, meet_link: '' })
+  const [preview, setPreview]   = useState({})
+  const [copied, setCopied]     = useState(false)
+  const [publishing, setPublishing] = useState(false)
 
-  const handleAdd = async () => {
-    setSaving(true)
+  const formUrl = publishedForm
+    ? `${window.location.origin}/f/${publishedForm.id}`
+    : null
+
+  const handlePublish = async () => {
+    setPublishing(true)
+    try { await publish() }
+    catch (e) { alert(e.message) }
+    setPublishing(false)
+  }
+
+  const handleUnpublish = async () => {
+    if (!confirm('Unpublish this form? The link will stop working.')) return
+    await unpublish()
+  }
+
+  const copyLink = () => {
+    if (!formUrl) return
+    navigator.clipboard?.writeText(formUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleAddField = async () => {
     try {
       await add({
         label:      newF.label,
@@ -28,13 +60,15 @@ export default function IntakeForm() {
       setNewF(EMPTY_FIELD)
       setShowAdd(false)
     } catch (e) { alert(e.message) }
-    setSaving(false)
   }
 
-  const copyLink = () => {
-    navigator.clipboard?.writeText(formUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleAddSlot = async () => {
+    if (!newSlot.starts_at) return
+    try {
+      await addSlot(newSlot)
+      setNewSlot({ starts_at: '', duration_minutes: 60, meet_link: '' })
+      setShowSlot(false)
+    } catch (e) { alert(e.message) }
   }
 
   return (
@@ -42,20 +76,56 @@ export default function IntakeForm() {
       <div className="page-header">
         <div className="page-title">
           <h1>Intake form</h1>
-          <p>Build your qualifier form. Share the link in your Meta ads.</p>
+          <p>Build your qualifier form. Publish a shareable link. Manage booking slots.</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-ghost" onClick={copyLink}>
-            <Icon name="copy" size={13} /> {copied ? 'Copied!' : 'Copy link'}
-          </button>
-          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+          {publishedForm ? (
+            <>
+              <button className="btn btn-ghost" onClick={copyLink}>
+                <Icon name="copy" size={13} /> {copied ? 'Copied!' : 'Copy link'}
+              </button>
+              <button className="btn btn-ghost" onClick={handleUnpublish} style={{ color: 'var(--red)' }}>
+                Unpublish
+              </button>
+            </>
+          ) : (
+            <button className="btn btn-primary" onClick={handlePublish} disabled={publishing || pubLoading || fields.length === 0}>
+              <Icon name="eye" size={14} /> {publishing ? 'Publishing…' : 'Publish form'}
+            </button>
+          )}
+          <button className="btn btn-ghost" onClick={() => setShowAdd(true)}>
             <Icon name="plus" size={14} /> Add field
           </button>
         </div>
       </div>
 
+      {/* Live banner */}
+      {publishedForm && formUrl && (
+        <div style={{
+          background: 'rgba(61,214,140,0.07)', border: '1px solid rgba(61,214,140,0.2)',
+          borderRadius: 'var(--r-md)', padding: '12px 16px', marginBottom: 24,
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--green)' }}>Form is live</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-tertiary)', marginTop: 2 }}>{formUrl}</div>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={copyLink}>
+            <Icon name="copy" size={12} /> {copied ? 'Copied!' : 'Copy'}
+          </button>
+          <a href={formUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+            <Icon name="eye" size={12} /> Preview
+          </a>
+        </div>
+      )}
+
+      {/* Tabs */}
       <div className="tabs mt-2" style={{ width: 'fit-content', marginBottom: 20 }}>
-        <button className={`tab ${tab === 'builder' ? 'active' : ''}`} onClick={() => setTab('builder')}>Builder</button>
+        <button className={`tab ${tab === 'builder' ? 'active' : ''}`} onClick={() => setTab('builder')}>Form fields</button>
+        <button className={`tab ${tab === 'slots'   ? 'active' : ''}`} onClick={() => setTab('slots')}>
+          Booking slots {slots.length > 0 && `(${slots.length})`}
+        </button>
         <button className={`tab ${tab === 'preview' ? 'active' : ''}`} onClick={() => setTab('preview')}>Preview</button>
       </div>
 
@@ -82,12 +152,49 @@ export default function IntakeForm() {
               <div className="flex gap-1">
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => reorder(f.id, -1)} disabled={i === 0}>↑</button>
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => reorder(f.id, 1)} disabled={i === fields.length - 1}>↓</button>
-                <button className="btn btn-danger btn-icon btn-sm" onClick={() => remove(f.id)}>
-                  <Icon name="trash" size={12} />
-                </button>
+                <button className="btn btn-danger btn-icon btn-sm" onClick={() => remove(f.id)}><Icon name="trash" size={12} /></button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Slots */}
+      {tab === 'slots' && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <p className="muted text-sm">Open time slots day by day. Participants pick one after submitting the form.</p>
+            <button className="btn btn-primary" onClick={() => setShowSlot(true)}>
+              <Icon name="plus" size={14} /> Add slot
+            </button>
+          </div>
+          <div className="flex-col gap-2">
+            {slots.length === 0 && (
+              <div className="card" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 48 }}>
+                No slots open yet. Add slots so participants can book immediately after submitting.
+              </div>
+            )}
+            {slots.map(s => (
+              <div key={s.id} className="card-sm flex items-center justify-between">
+                <div>
+                  <strong style={{ fontSize: 13.5 }}>{fmtSlot(s.starts_at)}</strong>
+                  <div className="text-xs muted mt-1">
+                    {s.duration_minutes} min{s.meet_link ? ` · ${s.meet_link}` : ''}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`badge ${s.available ? 'badge-green' : 'badge-red'}`}>
+                    {s.available ? 'Available' : 'Booked'}
+                  </span>
+                  {s.available && (
+                    <button className="btn btn-danger btn-icon btn-sm" onClick={() => removeSlot(s.id)}>
+                      <Icon name="trash" size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -95,7 +202,7 @@ export default function IntakeForm() {
       {tab === 'preview' && (
         <div className="card" style={{ maxWidth: 520 }}>
           <h2 style={{ marginBottom: 4 }}>Participation form</h2>
-          <p className="muted text-sm mt-1" style={{ marginBottom: 24 }}>Complete this form to book your research session.</p>
+          <p className="muted text-sm mt-1" style={{ marginBottom: 24 }}>Complete this short form to register for a research session.</p>
           <div className="flex-col gap-4">
             {fields.map(f => (
               <div key={f.id} className="field">
@@ -118,7 +225,7 @@ export default function IntakeForm() {
           </div>
           {fields.length > 0 && (
             <button className="btn btn-primary w-full mt-6" style={{ justifyContent: 'center' }}>
-              Submit &amp; book session
+              Continue to booking →
             </button>
           )}
         </div>
@@ -141,7 +248,7 @@ export default function IntakeForm() {
             {newF.field_type === 'select' && (
               <div className="field">
                 <label>Options (comma-separated)</label>
-                <input placeholder="Option A, Option B, Option C" value={newF.options} onChange={e => setNewF(f => ({ ...f, options: e.target.value }))} />
+                <input placeholder="Option A, Option B" value={newF.options} onChange={e => setNewF(f => ({ ...f, options: e.target.value }))} />
               </div>
             )}
             <label className="flex items-center gap-2" style={{ cursor: 'pointer', fontSize: 13.5 }}>
@@ -151,8 +258,36 @@ export default function IntakeForm() {
           </div>
           <div className="flex gap-3 mt-4" style={{ justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleAdd} disabled={!newF.label || saving}>
+            <button className="btn btn-primary" onClick={handleAddField} disabled={!newF.label}>
               <Icon name="plus" size={14} /> Add field
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Add slot modal */}
+      {showSlot && (
+        <Modal title="Add booking slot" onClose={() => setShowSlot(false)}>
+          <div className="flex-col gap-3">
+            <div className="field">
+              <label>Date and time</label>
+              <input type="datetime-local" value={newSlot.starts_at} onChange={e => setNewSlot(s => ({ ...s, starts_at: e.target.value }))} />
+            </div>
+            <div className="field">
+              <label>Duration</label>
+              <select value={newSlot.duration_minutes} onChange={e => setNewSlot(s => ({ ...s, duration_minutes: Number(e.target.value) }))}>
+                {[30,45,60,90].map(m => <option key={m} value={m}>{m} min</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Video call link (optional)</label>
+              <input placeholder="https://meet.google.com/…" value={newSlot.meet_link} onChange={e => setNewSlot(s => ({ ...s, meet_link: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4" style={{ justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" onClick={() => setShowSlot(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleAddSlot} disabled={!newSlot.starts_at}>
+              <Icon name="plus" size={14} /> Add slot
             </button>
           </div>
         </Modal>

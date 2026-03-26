@@ -1,35 +1,35 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --bg-base:    #0a0a0f;
-  --bg-surface: #111118;
-  --bg-raised:  #18181f;
-  --bg-overlay: #1f1f28;
+  --bg-base:    #ffffff;
+  --bg-surface: #fafafa;
+  --bg-raised:  #f4f4f5;
+  --bg-overlay: #e4e4e7;
 
-  --border-subtle: rgba(255,255,255,0.06);
-  --border-base:   rgba(255,255,255,0.10);
-  --border-strong: rgba(255,255,255,0.16);
+  --border-subtle: #f4f4f5;
+  --border-base:   #e4e4e7;
+  --border-strong: #d4d4d8;
 
-  --text-primary:   #f0eff8;
-  --text-secondary: #9998aa;
-  --text-tertiary:  #5f5e70;
+  --text-primary:   #09090b;
+  --text-secondary: #71717a;
+  --text-tertiary:  #a1a1aa;
 
-  --accent:       #7c6af7;
-  --accent-light: #a398ff;
-  --accent-glow:  rgba(124,106,247,0.15);
+  --accent:       #6366f1;
+  --accent-light: #818cf8;
+  --accent-glow:  rgba(99,102,241,0.12);
 
-  --green:  #3dd68c;
-  --amber:  #f5a623;
-  --red:    #f04f4f;
-  --blue:   #4fa8f5;
+  --green:  #16a34a;
+  --amber:  #d97706;
+  --red:    #dc2626;
+  --blue:   #2563eb;
 
-  --font-display: 'Syne', sans-serif;
-  --font-body:    'DM Sans', sans-serif;
+  --font-display: 'Inter', sans-serif;
+  --font-body:    'Inter', sans-serif;
 
   --r-sm: 6px;
-  --r-md: 10px;
-  --r-lg: 14px;
-  --r-xl: 20px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
 
   --sidebar-w: 232px;
 

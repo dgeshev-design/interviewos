@@ -150,3 +150,43 @@ create policy "briefs_storage_owner" on storage.objects
     bucket_id = 'briefs'
     and auth.uid()::text = (storage.foldername(name))[1]
   );
+
+-- ================================================================
+-- ADDITIONS: published_forms + slots
+-- Run this section separately if you already ran the schema above
+-- ================================================================
+
+-- Published forms (one per workspace, generates the public /f/:id URL)
+create table if not exists published_forms (
+  id           uuid primary key default uuid_generate_v4(),
+  workspace_id uuid not null references workspaces(id) on delete cascade,
+  created_at   timestamptz default now(),
+  unique(workspace_id)
+);
+
+alter table published_forms enable row level security;
+create policy "own_published_forms" on published_forms for all using (
+  workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+-- Booking slots
+create table if not exists slots (
+  id               uuid primary key default uuid_generate_v4(),
+  workspace_id     uuid not null references workspaces(id) on delete cascade,
+  starts_at        timestamptz not null,
+  duration_minutes integer not null default 60,
+  meet_link        text default '',
+  available        boolean not null default true,
+  participant_id   uuid references participants(id) on delete set null,
+  created_at       timestamptz default now()
+);
+
+alter table slots enable row level security;
+create policy "own_slots" on slots for all using (
+  workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+-- Allow anonymous reads on published_forms and slots (needed for public form page)
+create policy "public_read_published_forms" on published_forms
+  for select using (true);
+
+create policy "public_read_slots" on slots
+  for select using (available = true);

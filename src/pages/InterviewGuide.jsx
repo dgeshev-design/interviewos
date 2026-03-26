@@ -216,7 +216,7 @@ export default function InterviewGuide() {
 
           {/* Session summary */}
           {(summary || sumLoading) && (
-            <div className="ai-panel" style={{ borderColor: 'rgba(61,214,140,0.2)' }}>
+            <div className="ai-panel" style={{ borderColor: '#bbf7d0', background: '#f0fdf4' }}>
               <div className="flex items-center gap-2">
                 <Icon name="sparkle" size={14} color="var(--green)" />
                 <h3 style={{ color: 'var(--green)' }}>Session summary</h3>

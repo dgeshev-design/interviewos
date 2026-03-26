@@ -38,9 +38,9 @@
 }
 
 .doneBtn {
-  background: rgba(61,214,140,0.12);
-  color: var(--green);
-  border: 1px solid rgba(61,214,140,0.2);
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
 }
 
 .aiBtn {

@@ -7,6 +7,7 @@ import Participants from '@/pages/Participants'
 import IntakeForm from '@/pages/IntakeForm'
 import InterviewGuide from '@/pages/InterviewGuide'
 import CommsHub from '@/pages/CommsHub'
+import PublicForm from '@/pages/PublicForm'
 
 function AuthGuard({ children }) {
   const { user, authLoading } = useApp()
@@ -34,6 +35,9 @@ function AppRoutes() {
 
   return (
     <Routes>
+      {/* Public routes — no auth required */}
+      <Route path="/f/:formId" element={<PublicForm />} />
+
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/*" element={
         <AuthGuard>
