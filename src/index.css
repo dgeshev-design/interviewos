@@ -64,7 +64,8 @@
   .rich-text-content code { background: hsl(var(--muted)); padding: 0.15rem 0.35rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.875em; }
 
   /* Editor.js block styles */
-  .codex-editor { font-family: inherit; }
+  .codex-editor { font-family: inherit; border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 8px 4px; transition: border-color 0.15s; }
+  .codex-editor:focus-within { border-color: hsl(var(--ring)); box-shadow: 0 0 0 2px hsl(var(--ring) / 0.15); }
   .codex-editor__redactor { padding-bottom: 40px !important; }
   .ce-block__content { max-width: 100% !important; }
   .ce-toolbar__content { max-width: 100% !important; }
