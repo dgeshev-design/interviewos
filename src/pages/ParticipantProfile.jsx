@@ -441,14 +441,17 @@ export default function ParticipantProfile() {
                     ))}
                   </div>
                   {/* Manual quote input */}
-                  <div className="space-y-1.5">
+                  <div className="flex gap-2">
                     <Input
-                      placeholder="Or type a quote manually…"
+                      placeholder="Type a quote manually…"
                       value={newQuote}
                       onChange={e => setNewQuote(e.target.value)}
                       className="text-xs h-8"
                       onKeyDown={e => { if (e.key === 'Enter' && newQuote.trim()) addQuote(newQuote) }}
                     />
+                    <Button size="sm" className="h-8 shrink-0" disabled={!newQuote.trim()} onClick={() => addQuote(newQuote)}>
+                      Add
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
