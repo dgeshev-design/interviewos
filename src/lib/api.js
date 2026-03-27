@@ -1,56 +1,17 @@
-// All calls to /api/* go to Vercel serverless functions
-// which hold the secret keys server-side
-
-export async function sendEmail({ to, subject, body }) {
-  const res = await fetch('/api/send-email', {
+async function post(path, body) {
+  const res = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to, subject, body })
+    body: JSON.stringify(body),
   })
   return res.json()
 }
 
-export async function sendSMS({ to, body }) {
-  const res = await fetch('/api/send-sms', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to, body })
-  })
-  return res.json()
-}
-
-export async function sendWhatsApp({ to, body }) {
-  const res = await fetch('/api/send-whatsapp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to, body })
-  })
-  return res.json()
-}
-
-export async function aiSuggest({ questionText, notes, participantName }) {
-  const res = await fetch('/api/ai-suggest', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ questionText, notes, participantName })
-  })
-  return res.json()
-}
-
-export async function aiSummarise({ questions, participantName }) {
-  const res = await fetch('/api/ai-summarise', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ questions, participantName })
-  })
-  return res.json()
-}
-
-export async function aiGenerateQuestions({ briefText }) {
-  const res = await fetch('/api/ai-generate-questions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ briefText })
-  })
-  return res.json()
-}
+export const sendEmail       = (data) => post('/api/send-email',        data)
+export const sendWhatsApp    = (data) => post('/api/send-whatsapp',     data)
+export const sendSMS         = (data) => post('/api/send-sms',          data)
+export const createCalEvent  = (data) => post('/api/create-calendar-event', data)
+export const syncGCal        = (data) => post('/api/sync-gcal',         data)
+export const generateSlots   = (data) => post('/api/generate-slots',    data)
+export const saveGoogleToken = (data) => post('/api/save-google-token', data)
+export const submitPublicForm= (data) => post('/api/submit-form',       data)

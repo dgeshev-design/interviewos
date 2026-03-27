@@ -1,230 +1,239 @@
 -- ================================================================
--- InterviewOS — Supabase Schema
--- Paste this entire file into Supabase → SQL Editor → Run
+-- InterviewOS v2 — Fresh Schema
+-- Run this in Supabase → SQL Editor
+-- WARNING: Drops all existing InterviewOS tables
 -- ================================================================
 
+-- Extensions
 create extension if not exists "uuid-ossp";
 
--- ── Workspaces (one per user, fully isolated) ─────────────
+-- ── Drop old tables (safe — cascades) ────────────────────────────
+drop table if exists send_log           cascade;
+drop table if exists briefs             cascade;
+drop table if exists sessions           cascade;
+drop table if exists slots              cascade;
+drop table if exists availability_windows cascade;
+drop table if exists published_forms    cascade;
+drop table if exists form_fields        cascade;
+drop table if exists templates          cascade;
+drop table if exists questions          cascade;
+drop table if exists google_tokens      cascade;
+drop table if exists participants       cascade;
+drop table if exists studies            cascade;
+drop table if exists workspaces         cascade;
+
+-- ── Workspaces ────────────────────────────────────────────────────
 create table workspaces (
-  id         uuid primary key default uuid_generate_v4(),
-  user_id    uuid not null references auth.users(id) on delete cascade,
-  name       text not null default 'My Workspace',
-  created_at timestamptz default now(),
+  id           uuid primary key default uuid_generate_v4(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  name         text not null default 'My Workspace',
+  allowed_domains text[] default '{"betty.com","uk.betty.com","playbetty.co.uk"}',
+  settings     jsonb default '{}',
+  created_at   timestamptz default now(),
   unique(user_id)
 );
 
--- ── Participants ──────────────────────────────────────────
-create table participants (
-  id           uuid primary key default uuid_generate_v4(),
-  workspace_id uuid not null references workspaces(id) on delete cascade,
-  name         text not null,
-  email        text,
-  phone        text,
-  age_group    text,
-  location     text,
-  status       text not null default 'booked'
-                 check (status in ('booked','completed','no-show')),
-  booked_at    timestamptz,
-  meet_link    text,
-  notes        text default '',
-  form_data    jsonb default '{}',
-  created_at   timestamptz default now()
-);
-
--- ── Intake form fields ────────────────────────────────────
-create table form_fields (
-  id           uuid primary key default uuid_generate_v4(),
-  workspace_id uuid not null references workspaces(id) on delete cascade,
-  label        text not null,
-  field_type   text not null default 'text'
-                 check (field_type in ('text','email','tel','number','textarea','select')),
-  required     boolean default false,
-  options      text[] default '{}',
-  position     integer not null default 0,
-  created_at   timestamptz default now()
-);
-
--- ── Interview questions ───────────────────────────────────
-create table questions (
-  id           uuid primary key default uuid_generate_v4(),
-  workspace_id uuid not null references workspaces(id) on delete cascade,
-  level        text not null check (level in ('L1','L2','L3')),
-  body         text not null,
-  position     integer not null default 0,
-  created_at   timestamptz default now()
-);
-
--- ── Interview sessions ────────────────────────────────────
-create table sessions (
-  id             uuid primary key default uuid_generate_v4(),
-  workspace_id   uuid not null references workspaces(id) on delete cascade,
-  participant_id uuid not null references participants(id) on delete cascade,
-  started_at     timestamptz default now(),
-  ended_at       timestamptz,
-  summary        text default '',
-  notes          jsonb default '{}',
-  done_questions uuid[] default '{}'
-);
-
--- ── Comms templates ───────────────────────────────────────
-create table templates (
-  id             uuid primary key default uuid_generate_v4(),
-  workspace_id   uuid not null references workspaces(id) on delete cascade,
-  name           text not null,
-  channel        text not null check (channel in ('email','sms','whatsapp')),
-  subject        text default '',
-  body           text not null default '',
-  trigger_offset integer default 0,
-  created_at     timestamptz default now()
-);
-
--- ── Send log ──────────────────────────────────────────────
-create table send_log (
-  id             uuid primary key default uuid_generate_v4(),
-  workspace_id   uuid not null references workspaces(id) on delete cascade,
-  template_id    uuid references templates(id) on delete set null,
-  participant_id uuid references participants(id) on delete set null,
-  channel        text not null,
-  status         text not null default 'sent' check (status in ('sent','failed')),
-  error          text,
-  sent_at        timestamptz default now()
-);
-
--- ── Research briefs (uploaded docs) ──────────────────────
-create table briefs (
-  id             uuid primary key default uuid_generate_v4(),
-  workspace_id   uuid not null references workspaces(id) on delete cascade,
-  filename       text not null,
-  raw_text       text not null,
-  generated_qs   jsonb default '[]',
-  applied        boolean default false,
-  created_at     timestamptz default now()
-);
-
--- ================================================================
--- Row Level Security — users only see their own workspace data
--- ================================================================
-
-alter table workspaces   enable row level security;
-alter table participants enable row level security;
-alter table form_fields  enable row level security;
-alter table questions    enable row level security;
-alter table sessions     enable row level security;
-alter table templates    enable row level security;
-alter table send_log     enable row level security;
-alter table briefs       enable row level security;
-
-create policy "own_workspace"   on workspaces   for all using (auth.uid() = user_id);
-
-create policy "own_participants" on participants for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
-
-create policy "own_form_fields" on form_fields for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
-
-create policy "own_questions"   on questions   for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
-
-create policy "own_sessions"    on sessions    for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
-
-create policy "own_templates"   on templates   for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
-
-create policy "own_send_log"    on send_log    for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
-
-create policy "own_briefs"      on briefs      for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
-
--- ================================================================
--- Storage bucket for uploaded brief files
--- ================================================================
-insert into storage.buckets (id, name, public)
-  values ('briefs', 'briefs', false)
-  on conflict do nothing;
-
-create policy "briefs_storage_owner" on storage.objects
-  for all using (
-    bucket_id = 'briefs'
-    and auth.uid()::text = (storage.foldername(name))[1]
-  );
-
--- ================================================================
--- ADDITIONS: published_forms + slots
--- Run this section separately if you already ran the schema above
--- ================================================================
-
--- Published forms (one per workspace, generates the public /f/:id URL)
-create table if not exists published_forms (
-  id           uuid primary key default uuid_generate_v4(),
-  workspace_id uuid not null references workspaces(id) on delete cascade,
-  created_at   timestamptz default now(),
+-- ── Google tokens (for Calendar API) ─────────────────────────────
+create table google_tokens (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  access_token  text not null,
+  refresh_token text,
+  expiry        timestamptz,
+  email         text,
+  updated_at    timestamptz default now(),
   unique(workspace_id)
 );
 
-alter table published_forms enable row level security;
-create policy "own_published_forms" on published_forms for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
+-- ── Studies ───────────────────────────────────────────────────────
+create table studies (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  name          text not null,
+  description   text default '',
+  slug          text not null,                        -- used in public URL /s/:slug
+  status        text not null default 'active'
+                  check (status in ('draft','active','closed')),
+  target_count  integer default 10,
+  custom_fields jsonb default '[]',                   -- [{id, label, type, options}]
+  created_at    timestamptz default now(),
+  unique(workspace_id, slug)
+);
 
--- Booking slots
-create table if not exists slots (
+-- ── Promo code pools (per study) ─────────────────────────────────
+create table promo_codes (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  study_id      uuid references studies(id) on delete cascade,
+  code          text not null,
+  assigned_to   uuid,                                 -- participant_id once assigned
+  assigned_at   timestamptz,
+  created_at    timestamptz default now()
+);
+
+-- ── Participants ──────────────────────────────────────────────────
+create table participants (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  study_id      uuid references studies(id) on delete set null,
+  name          text not null,
+  email         text,
+  phone         text,
+  age_group     text,
+  location      text,
+  status        text not null default 'booked'
+                  check (status in ('booked','completed','no-show','disqualified','prize-granted')),
+  tags          text[] default '{}',
+  rating        integer check (rating between 1 and 5),
+  summary       text default '',
+  notes         text default '',                      -- rich text (HTML string)
+  quotes        jsonb default '[]',                   -- [{id, text, tag, color}]
+  custom_fields jsonb default '{}',                   -- {field_id: value}
+  form_data     jsonb default '{}',
+  promo_code    text default '',
+  booked_at     timestamptz,
+  meet_link     text default '',
+  gcal_event_id text default '',
+  created_at    timestamptz default now()
+);
+
+-- ── Participant files ─────────────────────────────────────────────
+create table participant_files (
+  id             uuid primary key default uuid_generate_v4(),
+  workspace_id   uuid not null references workspaces(id) on delete cascade,
+  participant_id uuid not null references participants(id) on delete cascade,
+  file_type      text not null check (file_type in ('video','image','document','transcript')),
+  filename       text not null,
+  storage_path   text not null,                       -- Supabase storage path
+  size_bytes     bigint,
+  mime_type      text,
+  created_at     timestamptz default now()
+);
+
+-- ── Forms (multiple per study) ────────────────────────────────────
+create table forms (
+  id            uuid primary key default uuid_generate_v4(),
+  workspace_id  uuid not null references workspaces(id) on delete cascade,
+  study_id      uuid not null references studies(id) on delete cascade,
+  name          text not null default 'Intake Form',
+  is_active     boolean default false,                -- only one active per study
+  fields        jsonb default '[]',                   -- full field definitions with logic
+  created_at    timestamptz default now()
+);
+
+-- ── Booking slots ─────────────────────────────────────────────────
+create table slots (
   id               uuid primary key default uuid_generate_v4(),
   workspace_id     uuid not null references workspaces(id) on delete cascade,
+  study_id         uuid references studies(id) on delete cascade,
   starts_at        timestamptz not null,
+  ends_at          timestamptz not null,
   duration_minutes integer not null default 60,
   meet_link        text default '',
+  gcal_event_id    text default '',
   available        boolean not null default true,
+  is_gcal_block    boolean not null default false,    -- true = imported from GCal, not bookable
   participant_id   uuid references participants(id) on delete set null,
   created_at       timestamptz default now()
 );
 
-alter table slots enable row level security;
-create policy "own_slots" on slots for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
-
--- Allow anonymous reads on published_forms and slots (needed for public form page)
-create policy "public_read_published_forms" on published_forms
-  for select using (true);
-
-create policy "public_read_slots" on slots
-  for select using (available = true);
-
--- ================================================================
--- ADDITIONS: google_tokens + availability_windows
--- ================================================================
-
--- Store Google OAuth tokens per workspace (for Calendar API)
-create table if not exists google_tokens (
-  id             uuid primary key default uuid_generate_v4(),
-  workspace_id   uuid not null references workspaces(id) on delete cascade,
-  access_token   text not null,
-  refresh_token  text,
-  expiry         timestamptz,
-  email          text,
-  updated_at     timestamptz default now(),
-  unique(workspace_id)
-);
-
-alter table google_tokens enable row level security;
-create policy "own_google_tokens" on google_tokens for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
-
--- Availability windows (generates slots automatically)
-create table if not exists availability_windows (
+-- ── Availability windows ──────────────────────────────────────────
+create table availability_windows (
   id               uuid primary key default uuid_generate_v4(),
   workspace_id     uuid not null references workspaces(id) on delete cascade,
+  study_id         uuid references studies(id) on delete cascade,
   date_from        date not null,
   date_to          date not null,
   time_from        time not null,
   time_to          time not null,
   duration_minutes integer not null default 60,
   buffer_minutes   integer not null default 0,
-  days_of_week     integer[] default '{1,2,3,4,5}', -- 0=Sun, 1=Mon ... 6=Sat
+  days_of_week     integer[] default '{1,2,3,4,5}',
   created_at       timestamptz default now()
 );
 
+-- ── Comms templates ───────────────────────────────────────────────
+create table templates (
+  id             uuid primary key default uuid_generate_v4(),
+  workspace_id   uuid not null references workspaces(id) on delete cascade,
+  name           text not null,
+  trigger_type   text not null
+                   check (trigger_type in (
+                     'booking_confirmed','reminder_24h','reminder_3h',
+                     'reminder_1h','reminder_5min','no_show','prize','custom'
+                   )),
+  channel        text not null check (channel in ('email','whatsapp','sms')),
+  subject        text default '',
+  body           text not null default '',
+  is_html        boolean default false,
+  trigger_offset integer default 0,                   -- minutes from session (negative = before)
+  is_active      boolean default true,
+  created_at     timestamptz default now()
+);
+
+-- ── Comms send log ────────────────────────────────────────────────
+create table send_log (
+  id             uuid primary key default uuid_generate_v4(),
+  workspace_id   uuid not null references workspaces(id) on delete cascade,
+  participant_id uuid references participants(id) on delete set null,
+  template_id    uuid references templates(id) on delete set null,
+  channel        text not null,
+  subject        text,
+  body_preview   text,
+  status         text not null default 'sent' check (status in ('sent','failed','pending')),
+  error          text,
+  sent_at        timestamptz default now()
+);
+
+-- ================================================================
+-- Row Level Security
+-- ================================================================
+
+alter table workspaces         enable row level security;
+alter table google_tokens      enable row level security;
+alter table studies            enable row level security;
+alter table promo_codes        enable row level security;
+alter table participants       enable row level security;
+alter table participant_files  enable row level security;
+alter table forms              enable row level security;
+alter table slots              enable row level security;
 alter table availability_windows enable row level security;
-create policy "own_availability_windows" on availability_windows for all using (
-  workspace_id in (select id from workspaces where user_id = auth.uid()));
+alter table templates          enable row level security;
+alter table send_log           enable row level security;
+
+-- Owner policies (all tables scoped to workspace owner)
+create policy "own_workspace"    on workspaces    for all using (auth.uid() = user_id);
+create policy "own_gtokens"      on google_tokens for all using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+create policy "own_studies"      on studies       for all using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+create policy "own_promos"       on promo_codes   for all using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+create policy "own_participants" on participants  for all using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+create policy "own_files"        on participant_files for all using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+create policy "own_forms"        on forms         for all using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+create policy "own_slots"        on slots         for all using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+create policy "own_avail"        on availability_windows for all using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+create policy "own_templates"    on templates     for all using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+create policy "own_send_log"     on send_log      for all using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+-- Public read for booking pages (no auth)
+create policy "public_read_studies" on studies
+  for select using (status = 'active');
+
+create policy "public_read_slots" on slots
+  for select using (available = true and is_gcal_block = false);
+
+create policy "public_read_forms" on forms
+  for select using (is_active = true);
+
+-- ================================================================
+-- Supabase Storage buckets
+-- ================================================================
+
+insert into storage.buckets (id, name, public)
+  values ('participant-files', 'participant-files', false)
+  on conflict do nothing;
+
+create policy "files_owner" on storage.objects
+  for all using (
+    bucket_id = 'participant-files'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );

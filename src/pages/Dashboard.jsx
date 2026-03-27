@@ -1,138 +1,139 @@
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '@/context/AppContext'
+import { useStudies } from '@/hooks/useStudies'
 import { useParticipants } from '@/hooks/useParticipants'
-import StatusBadge from '@/components/StatusBadge'
-import Icon from '@/components/Icon'
-
-const fmtDate = (iso) => {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
+import { useSlots } from '@/hooks/useSlots'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import StatusBadge from '@/components/ui/status-badge'
+import PageHeader from '@/components/layout/PageHeader'
+import { formatDateTime } from '@/lib/utils'
+import { Plus, ArrowRight, Video } from 'lucide-react'
 
 export default function Dashboard() {
-  const { user } = useApp()
-  const { participants, loading } = useParticipants()
+  const { user, workspace } = useApp()
+  const { studies, loading: sLoading } = useStudies()
+  const { participants, loading: pLoading } = useParticipants()
+  const { slots } = useSlots()
   const navigate = useNavigate()
 
   const total     = participants.length
   const completed = participants.filter(p => p.status === 'completed').length
   const booked    = participants.filter(p => p.status === 'booked').length
   const noShow    = participants.filter(p => p.status === 'no-show').length
-  const rate      = total ? Math.round((completed / total) * 100) : 0
 
-  const upcoming  = participants
-    .filter(p => p.status === 'booked')
-    .sort((a, b) => new Date(a.booked_at) - new Date(b.booked_at))
+  const upcoming = slots
+    .filter(s => s.available === false && s.participant_id && new Date(s.starts_at) > new Date())
+    .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
     .slice(0, 5)
 
-  const stats = [
-    { num: total,      label: 'Total',           color: 'var(--accent-light)' },
-    { num: completed,  label: 'Completed',        color: 'var(--green)'        },
-    { num: booked,     label: 'Upcoming',         color: 'var(--blue)'         },
-    { num: noShow,     label: 'No-shows',         color: 'var(--red)'          },
-    { num: `${rate}%`, label: 'Completion rate',  color: 'var(--amber)'        },
-  ]
+  const name = user?.user_metadata?.given_name || 'there'
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div className="page-title">
-          <h1>Dashboard</h1>
-          <p>Welcome back, {user?.user_metadata?.given_name || 'there'} — here's your research at a glance.</p>
-        </div>
-      </div>
+    <div className="p-8 max-w-5xl">
+      <PageHeader
+        title={`Good ${new Date().getHours() < 12 ? 'morning' : 'afternoon'}, ${name}`}
+        description={workspace?.name}
+        actions={
+          <Button size="sm" onClick={() => navigate('/studies')}>
+            <Plus className="h-4 w-4 mr-1.5" /> New study
+          </Button>
+        }
+      />
 
-      {/* Stats */}
-      <div className="grid-3" style={{ gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
-        {stats.map((s, i) => (
-          <div key={i} className="card" style={{ padding: 18 }}>
-            <div className="label">{s.label}</div>
-            <div style={{
-              fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 800,
-              color: s.color, lineHeight: 1, margin: '8px 0 6px'
-            }}>
-              {loading ? '—' : s.num}
-            </div>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{
-                width: typeof s.num === 'string'
-                  ? s.num
-                  : `${total ? Math.min(100, (s.num / total) * 100) : 0}%`,
-                background: s.color
-              }} />
-            </div>
-          </div>
+      {/* Stats row */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        {[
+          { label: 'Total participants', value: total, color: 'text-foreground' },
+          { label: 'Completed',          value: completed, color: 'text-green-600' },
+          { label: 'Booked',             value: booked,    color: 'text-blue-600'  },
+          { label: 'No-shows',           value: noShow,    color: 'text-red-500'   },
+        ].map(s => (
+          <Card key={s.label} className="shadow-none">
+            <CardContent className="p-5">
+              <div className="text-xs text-muted-foreground mb-1">{s.label}</div>
+              <div className={`text-2xl font-bold ${s.color}`}>{pLoading ? '—' : s.value}</div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      <div className="grid-2 mt-6" style={{ gridTemplateColumns: '1.5fr 1fr', gap: 20 }}>
+      <div className="grid grid-cols-5 gap-4">
         {/* Upcoming sessions */}
-        <div className="card">
-          <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-            <h2>Upcoming sessions</h2>
-            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/participants')}>
-              View all <Icon name="chevronR" size={13} />
-            </button>
-          </div>
-
-          {upcoming.length === 0 ? (
-            <div style={{ color: 'var(--text-tertiary)', fontSize: 13, padding: '16px 0' }}>
-              No upcoming sessions. Add participants to get started.
-            </div>
-          ) : (
-            <div className="flex-col gap-2">
-              {upcoming.map(p => (
-                <div key={p.id} className="card-sm flex items-center justify-between">
-                  <div>
-                    <strong style={{ fontSize: 13.5 }}>{p.name}</strong>
-                    <div className="text-xs" style={{ color: 'var(--text-tertiary)', marginTop: 2 }}>
-                      {fmtDate(p.booked_at)}
+        <div className="col-span-3">
+          <Card className="shadow-none">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold">Upcoming sessions</CardTitle>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/calendar')}>
+                  View calendar <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {upcoming.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No upcoming sessions.</p>
+              ) : (
+                <div className="space-y-2">
+                  {upcoming.map(slot => (
+                    <div key={slot.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div>
+                        <div className="text-sm font-medium">{slot.participants?.name || 'Unknown'}</div>
+                        <div className="text-xs text-muted-foreground">{formatDateTime(slot.starts_at)}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={slot.participants?.status || 'booked'} />
+                        {slot.meet_link && (
+                          <a href={slot.meet_link} target="_blank" rel="noreferrer">
+                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                              <Video className="h-3 w-3" /> Join
+                            </Button>
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <StatusBadge status={p.status} />
-                    {p.meet_link && (
-                      <a href={p.meet_link} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
-                        <Icon name="video" size={13} /> Join
-                      </a>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Quick actions */}
-        <div className="card">
-          <h2 style={{ marginBottom: 16 }}>Quick actions</h2>
-          <div className="flex-col gap-2">
-            {[
-              { icon: 'users',    label: 'Add participant',       to: '/participants' },
-              { icon: 'mic',      label: 'Start interview',        to: '/guide'        },
-              { icon: 'upload',   label: 'Upload research brief',  to: '/guide'        },
-              { icon: 'mail',     label: 'Send reminders',         to: '/comms'        },
-            ].map(a => (
-              <button
-                key={a.label}
-                className="card-sm flex items-center gap-3"
-                style={{ cursor: 'pointer', border: '1px solid var(--border-subtle)', background: 'var(--bg-raised)', width: '100%', textAlign: 'left', transition: 'border-color var(--t-base)' }}
-                onClick={() => navigate(a.to)}
-                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--border-base)'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
-              >
-                <div style={{
-                  width: 32, height: 32, borderRadius: 8,
-                  background: 'var(--bg-overlay)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <Icon name={a.icon} size={15} color="var(--accent-light)" />
-                </div>
-                <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>{a.label}</span>
-                <Icon name="chevronR" size={13} color="var(--text-tertiary)" style={{ marginLeft: 'auto' }} />
-              </button>
-            ))}
-          </div>
+        {/* Studies progress */}
+        <div className="col-span-2">
+          <Card className="shadow-none">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold">Studies</CardTitle>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/studies')}>
+                  View all <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {sLoading ? <p className="text-sm text-muted-foreground">Loading…</p> :
+               studies.length === 0 ? <p className="text-sm text-muted-foreground py-4 text-center">No studies yet.</p> :
+               <div className="space-y-3">
+                {studies.slice(0, 5).map(s => {
+                  const studyPs = participants.filter(p => p.study_id === s.id)
+                  const done    = studyPs.filter(p => p.status === 'completed').length
+                  const pct     = s.target_count ? Math.round((done / s.target_count) * 100) : 0
+                  return (
+                    <div key={s.id} className="cursor-pointer" onClick={() => navigate(`/studies/${s.id}`)}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium truncate flex-1">{s.name}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{done}/{s.target_count}</span>
+                      </div>
+                      <Progress value={pct} className="h-1.5" />
+                    </div>
+                  )
+                })}
+               </div>
+              }
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

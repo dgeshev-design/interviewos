@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background:   0 0% 100%;
+    --foreground:   224 71% 4%;
+    --card:         0 0% 100%;
+    --card-foreground: 224 71% 4%;
+    --popover:      0 0% 100%;
+    --popover-foreground: 224 71% 4%;
+    --primary:      243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary:    220 14% 96%;
+    --secondary-foreground: 224 71% 4%;
+    --muted:        220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent:       220 14% 96%;
+    --accent-foreground: 224 71% 4%;
+    --destructive:  0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border:       220 13% 91%;
+    --input:        220 13% 91%;
+    --ring:         243 75% 59%;
+    --radius:       0.5rem;
+
+    /* Status colours */
+    --status-booked:        210 100% 56%;
+    --status-completed:     142 71% 45%;
+    --status-no-show:       0 84% 60%;
+    --status-disqualified:  30 100% 50%;
+    --status-prize:         271 81% 56%;
+  }
+
+  * { border-color: hsl(var(--border)); }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+}
+
+@layer components {
+  /* Rich text editor styles */
+  .rich-text-content h1 { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.5rem; }
+  .rich-text-content h2 { font-size: 1.25rem; font-weight: 600; margin: 0.875rem 0 0.5rem; }
+  .rich-text-content h3 { font-size: 1.1rem; font-weight: 600; margin: 0.75rem 0 0.5rem; }
+  .rich-text-content p  { margin: 0.5rem 0; line-height: 1.7; }
+  .rich-text-content ul, .rich-text-content ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+  .rich-text-content li { margin: 0.25rem 0; line-height: 1.6; }
+  .rich-text-content blockquote { border-left: 3px solid hsl(var(--primary)); padding-left: 1rem; color: hsl(var(--muted-foreground)); margin: 0.75rem 0; font-style: italic; }
+  .rich-text-content strong { font-weight: 600; }
+  .rich-text-content em { font-style: italic; }
+  .rich-text-content code { background: hsl(var(--muted)); padding: 0.15rem 0.35rem; border-radius: 0.25rem; font-family: monospace; font-size: 0.875em; }
+
+  /* Calendar grid */
+  .cal-grid { display: grid; grid-template-columns: 60px repeat(7, 1fr); }
+  .cal-slot  { min-height: 48px; border-bottom: 1px solid hsl(var(--border)); border-right: 1px solid hsl(var(--border)); }
+
+  /* Quote card */
+  .quote-card { border-left: 3px solid hsl(var(--primary)); background: hsl(var(--muted)); border-radius: 0 0.5rem 0.5rem 0; }
+
+  /* Pulse animation for live sync indicator */
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+}

@@ -1,70 +1,67 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { saveGoogleToken } from '@/lib/api'
 
 const AppContext = createContext(null)
 
 const ALLOWED_DOMAINS = (import.meta.env.VITE_ALLOWED_DOMAINS || 'betty.com')
-  .split(',')
-  .map(d => d.trim().toLowerCase())
+  .split(',').map(d => d.trim().toLowerCase())
 
-function getDomain(email) {
-  return email?.split('@')[1]?.toLowerCase() || ''
-}
+function getDomain(email) { return email?.split('@')[1]?.toLowerCase() || '' }
 
 export function AppProvider({ children }) {
-  const [user, setUser]             = useState(null)
-  const [workspace, setWorkspace]   = useState(null)
-  const [authLoading, setAuthLoading] = useState(true)
-  const [authError, setAuthError]   = useState(null)
+  const [user, setUser]           = useState(null)
+  const [workspace, setWorkspace] = useState(null)
+  const [loading, setLoading]     = useState(true)
+  const [authError, setAuthError] = useState(null)
 
-  // Listen for auth state changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) handleUser(session.user)
-      else setAuthLoading(false)
+      if (session?.user) handleUser(session.user, session)
+      else setLoading(false)
     })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) handleUser(session.user)
-      else { setUser(null); setWorkspace(null); setAuthLoading(false) }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session?.user) handleUser(session.user, session)
+      else { setUser(null); setWorkspace(null); setLoading(false) }
     })
-
     return () => subscription.unsubscribe()
   }, [])
 
-  async function handleUser(u) {
+  async function handleUser(u, session) {
     const domain = getDomain(u.email)
     if (!ALLOWED_DOMAINS.includes(domain)) {
       await supabase.auth.signOut()
-      setAuthError(`Access denied. Only ${ALLOWED_DOMAINS.join(', ')} emails are allowed.`)
-      setAuthLoading(false)
+      setAuthError(`Access restricted to betty.com domains.`)
+      setLoading(false)
       return
     }
-
     setUser(u)
     const ws = await ensureWorkspace(u)
-    if (ws) await saveGoogleToken(u, ws.id)
-    setAuthLoading(false)
+    if (ws && session?.provider_token) {
+      try {
+        await saveGoogleToken({
+          workspaceId:  ws.id,
+          accessToken:  session.provider_token,
+          refreshToken: session.provider_refresh_token || null,
+          expiresIn:    3600,
+          email:        u.email,
+        })
+      } catch {}
+    }
+    setLoading(false)
   }
 
   async function ensureWorkspace(u) {
-    // Get or create workspace for this user
     let { data, error } = await supabase
-      .from('workspaces')
-      .select('*')
-      .eq('user_id', u.id)
-      .single()
-
-    if (error && error.code === 'PGRST116') {
-      // No workspace yet — create one
+      .from('workspaces').select('*').eq('user_id', u.id).single()
+    if (error?.code === 'PGRST116') {
+      const name = u.user_metadata?.full_name
+        ? `${u.user_metadata.full_name}'s Workspace`
+        : 'My Workspace'
       const { data: created } = await supabase
-        .from('workspaces')
-        .insert({ user_id: u.id, name: u.user_metadata?.full_name ? `${u.user_metadata.full_name}'s Workspace` : 'My Workspace' })
-        .select()
-        .single()
+        .from('workspaces').insert({ user_id: u.id, name }).select().single()
       data = created
     }
-
     setWorkspace(data)
     return data
   }
@@ -76,45 +73,18 @@ export function AppProvider({ children }) {
       options: {
         redirectTo: window.location.origin,
         scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar',
-        queryParams: {
-          hd:             'betty.com',
-          access_type:    'offline',   // get refresh_token
-          prompt:         'consent',   // always show consent so we get refresh_token
-        }
+        queryParams: { access_type: 'offline', prompt: 'consent' }
       }
     })
   }
 
-  // Save Google token to backend after login so Calendar API can use it server-side
-  async function saveGoogleToken(u, wid) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.provider_token) return
-
-      await fetch('/api/save-google-token', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          workspaceId:  wid,
-          accessToken:  session.provider_token,
-          refreshToken: session.provider_refresh_token || null,
-          expiresIn:    session.expires_in || 3600,
-          email:        u.email,
-        }),
-      })
-    } catch (e) {
-      console.warn('Could not save Google token:', e.message)
-    }
-  }
-
   async function signOut() {
     await supabase.auth.signOut()
-    setUser(null)
-    setWorkspace(null)
+    setUser(null); setWorkspace(null)
   }
 
   return (
-    <AppContext.Provider value={{ user, workspace, authLoading, authError, signInWithGoogle, signOut }}>
+    <AppContext.Provider value={{ user, workspace, loading, authError, signInWithGoogle, signOut }}>
       {children}
     </AppContext.Provider>
   )
@@ -122,6 +92,6 @@ export function AppProvider({ children }) {
 
 export function useApp() {
   const ctx = useContext(AppContext)
-  if (!ctx) throw new Error('useApp must be used inside AppProvider')
+  if (!ctx) throw new Error('useApp must be inside AppProvider')
   return ctx
 }

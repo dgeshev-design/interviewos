@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useApp } from '@/context/AppContext'
 
-export function useSlots() {
+export function useSlots(studyId = null) {
   const { workspace } = useApp()
   const [slots, setSlots]   = useState([])
   const [loading, setLoading] = useState(true)
@@ -10,33 +10,36 @@ export function useSlots() {
   const fetch = useCallback(async () => {
     if (!workspace) return
     setLoading(true)
-    const { data } = await supabase
-      .from('slots')
-      .select('*')
+    let q = supabase.from('slots').select('*, participants(name,email,status)')
       .eq('workspace_id', workspace.id)
-      .gte('starts_at', new Date().toISOString())
+      .gte('starts_at', new Date(Date.now() - 86400000).toISOString())
       .order('starts_at', { ascending: true })
+    if (studyId) q = q.eq('study_id', studyId)
+    const { data } = await q
     setSlots(data || [])
     setLoading(false)
-  }, [workspace])
+  }, [workspace, studyId])
 
   useEffect(() => { fetch() }, [fetch])
 
-  const addSlot = async ({ starts_at, duration_minutes = 60, meet_link = '' }) => {
-    const { data, error } = await supabase
-      .from('slots')
-      .insert({
-        workspace_id:     workspace.id,
-        starts_at,
-        duration_minutes,
-        meet_link,
-        available:        true,
-        participant_id:   null,
-      })
-      .select()
-      .single()
+  const addSlot = async (s) => {
+    const starts = new Date(s.starts_at)
+    const ends   = new Date(starts.getTime() + s.duration_minutes * 60000)
+    const { data, error } = await supabase.from('slots').insert({
+      ...s,
+      workspace_id: workspace.id,
+      ends_at: ends.toISOString(),
+      available: true,
+      is_gcal_block: false,
+    }).select().single()
     if (error) throw new Error(error.message)
     setSlots(prev => [...prev, data].sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at)))
+    return data
+  }
+
+  const updateSlot = async (id, changes) => {
+    const { data } = await supabase.from('slots').update(changes).eq('id', id).select().single()
+    setSlots(prev => prev.map(s => s.id === id ? data : s))
     return data
   }
 
@@ -45,15 +48,5 @@ export function useSlots() {
     setSlots(prev => prev.filter(s => s.id !== id))
   }
 
-  const updateSlot = async (id, changes) => {
-    const { data } = await supabase
-      .from('slots')
-      .update(changes)
-      .eq('id', id)
-      .select()
-      .single()
-    setSlots(prev => prev.map(s => s.id === id ? data : s))
-  }
-
-  return { slots, loading, refetch: fetch, addSlot, removeSlot, updateSlot }
+  return { slots, loading, refetch: fetch, addSlot, updateSlot, removeSlot }
 }
