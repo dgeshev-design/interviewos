@@ -95,7 +95,7 @@ export default function PublicBooking() {
   const mobileStyles = (
     <style>{`
       @media (max-width: 540px) {
-        .pb-page { background: #fff !important; }
+        .pb-page { background: #fff !important; padding: 0 !important; }
         .pb-wrap { padding-left: 0 !important; padding-right: 0 !important; }
         .pb-card { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
         .pb-card-body { padding: 20px 16px !important; }
