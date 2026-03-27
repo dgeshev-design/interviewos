@@ -1,5 +1,4 @@
 // Consolidated comms handler: /api/comms?action=email|sms|whatsapp
-import { Resend } from 'resend'
 
 async function sendEmail(to, subject, body, isHtml) {
   const r = await fetch('https://api.resend.com/emails', {
