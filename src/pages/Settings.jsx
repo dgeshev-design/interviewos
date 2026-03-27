@@ -107,16 +107,32 @@ export default function Settings() {
     }
   }
 
+  // Normalise phone: handles "CODE|NUMBER" storage format → "+15551234567"
+  const normalisePhone = (raw) => {
+    if (!raw) return ''
+    if (raw.includes('|')) {
+      const [code, num] = raw.split('|')
+      return `${code}${num.replace(/\D/g, '')}`
+    }
+    return raw
+  }
+
   const handleTestSend = async () => {
     if (!testTemplate || !testParticipant) return
+    const needsPhone = testTemplate.channel === 'whatsapp' || testTemplate.channel === 'sms'
+    const phone = normalisePhone(testParticipant.phone)
+    if (needsPhone && !phone) {
+      toast({ title: 'No phone number', description: `${testParticipant.name} has no phone number saved.`, variant: 'destructive' })
+      return
+    }
     setSending(true)
     try {
       const body = applyTemplateVars(testTemplate.body, testParticipant, null)
       const subject = applyTemplateVars(testTemplate.subject || '', testParticipant, null)
       let result
       if      (testTemplate.channel === 'email')    result = await sendEmail({ to: testParticipant.email, subject, body, isHtml: testTemplate.is_html })
-      else if (testTemplate.channel === 'whatsapp') result = await sendWhatsApp({ to: testParticipant.phone, body })
-      else if (testTemplate.channel === 'sms')      result = await sendSMS({ to: testParticipant.phone, body })
+      else if (testTemplate.channel === 'whatsapp') result = await sendWhatsApp({ to: phone, body })
+      else if (testTemplate.channel === 'sms')      result = await sendSMS({ to: phone, body })
       if (result?.error) throw new Error(result.error)
       toast({ title: 'Test sent', description: `${testTemplate.channel} sent to ${testParticipant.name}`, variant: 'success' })
       setTestTemplate(null)
@@ -299,9 +315,14 @@ export default function Settings() {
                     ))}
                 </div>
               )}
-              {testParticipant && (
-                <p className="text-xs text-green-600">Sending to: {testParticipant.name} ({testTemplate?.channel === 'email' ? testParticipant.email : testParticipant.phone})</p>
-              )}
+              {testParticipant && (() => {
+                const isEmail   = testTemplate?.channel === 'email'
+                const dest      = isEmail ? testParticipant.email : normalisePhone(testParticipant.phone)
+                const missing   = !dest
+                return missing
+                  ? <p className="text-xs text-red-500">⚠ {testParticipant.name} has no {isEmail ? 'email' : 'phone number'} saved.</p>
+                  : <p className="text-xs text-green-600">Sending to: {testParticipant.name} ({dest})</p>
+              })()}
             </div>
             {testTemplate && testParticipant && (
               <div className="rounded-md border bg-muted/30 p-3 text-xs whitespace-pre-wrap max-h-32 overflow-y-auto text-muted-foreground">

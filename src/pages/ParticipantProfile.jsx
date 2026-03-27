@@ -171,9 +171,10 @@ export default function ParticipantProfile() {
         await supabase.from('send_log').insert({ workspace_id: workspace.id, participant_id: participantId, template_id: prizeTemplate.id, channel: 'email', status: 'sent', subject, body_preview: body.slice(0,200) })
       }
 
+      const normPhone = (raw) => raw?.includes('|') ? `${raw.split('|')[0]}${raw.split('|')[1].replace(/\D/g,'')}` : (raw || '')
       if (waTemplate && participant.phone) {
         const body = applyTemplateVars(waTemplate.body, pWithCode, study)
-        await sendWhatsApp({ to: participant.phone, body })
+        await sendWhatsApp({ to: normPhone(participant.phone), body })
         await supabase.from('send_log').insert({ workspace_id: workspace.id, participant_id: participantId, template_id: waTemplate.id, channel: 'whatsapp', status: 'sent', body_preview: body.slice(0,200) })
       }
 

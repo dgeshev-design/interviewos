@@ -12,6 +12,15 @@ import { useToast } from '@/hooks/use-toast'
 
 const CHANNEL_COLORS = { email: 'blue', whatsapp: 'success', sms: 'secondary' }
 
+const normalisePhone = (raw) => {
+  if (!raw) return ''
+  if (raw.includes('|')) {
+    const [code, num] = raw.split('|')
+    return `${code}${num.replace(/\D/g, '')}`
+  }
+  return raw
+}
+
 export default function SendCommsModal({ open, onClose, participant, templates, study, onSent }) {
   const { workspace } = useApp()
   const { toast } = useToast()
@@ -30,8 +39,8 @@ export default function SendCommsModal({ open, onClose, participant, templates, 
 
       let result
       if      (selected.channel === 'email')    result = await sendEmail({ to: participant.email, subject, body, isHtml: selected.is_html })
-      else if (selected.channel === 'whatsapp') result = await sendWhatsApp({ to: participant.phone, body })
-      else if (selected.channel === 'sms')      result = await sendSMS({ to: participant.phone, body })
+      else if (selected.channel === 'whatsapp') result = await sendWhatsApp({ to: normalisePhone(participant.phone), body })
+      else if (selected.channel === 'sms')      result = await sendSMS({ to: normalisePhone(participant.phone), body })
 
       const status = result?.error ? 'failed' : 'sent'
 
