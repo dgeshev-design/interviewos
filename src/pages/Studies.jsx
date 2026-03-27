@@ -38,7 +38,7 @@ export default function Studies() {
   }
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-8">
       <PageHeader
         title="Studies"
         description="Organise your research by project"

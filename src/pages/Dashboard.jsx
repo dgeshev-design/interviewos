@@ -32,7 +32,7 @@ export default function Dashboard() {
   const name = user?.user_metadata?.given_name || 'there'
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8">
       <PageHeader
         title={`Good ${new Date().getHours() < 12 ? 'morning' : 'afternoon'}, ${name}`}
         description={workspace?.name}

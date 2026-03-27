@@ -133,7 +133,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-8">
       <PageHeader title="Settings" description="Manage your workspace, integrations and message templates" />
 
       {/* Workspace */}

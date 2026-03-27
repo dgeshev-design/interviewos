@@ -110,7 +110,7 @@ export default function Calendar() {
   }
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-8">
       <PageHeader
         title="Calendar"
         description="Manage your availability and upcoming sessions"

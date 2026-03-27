@@ -215,7 +215,7 @@ export default function StudyDetail() {
   )
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8">
       <button onClick={() => navigate('/studies')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 transition-colors">
         <ArrowLeft className="h-4 w-4" /> All studies
       </button>
