@@ -107,7 +107,7 @@ export default function PublicBooking() {
   const s = {
     page:     { minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'clamp(16px, 5vw, 40px) 16px', fontFamily: 'Inter, system-ui, sans-serif' },
     wrap:     { width: '100%', maxWidth: 520 },
-    logoWrap: { marginBottom: 24, textAlign: 'center' },
+    logoWrap: { marginBottom: 24, display: 'flex', justifyContent: 'center', alignItems: 'center' },
     logoText: { fontSize: 18, fontWeight: 700, color: '#111827' },
     accent:   { color: brandColor },
     card:     { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
@@ -129,6 +129,7 @@ export default function PublicBooking() {
       @media (max-width: 540px) {
         .pb-page { background: #fff !important; padding: 0 !important; }
         .pb-wrap { padding-left: 0 !important; padding-right: 0 !important; }
+        .pb-logo { padding: 20px 16px 0 !important; }
         .pb-card { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
         .pb-card-body { padding: 20px 16px !important; }
         .pb-btn-row { flex-direction: column !important; }
@@ -138,7 +139,7 @@ export default function PublicBooking() {
   )
 
   const logoEl = (
-    <div style={s.logoWrap}>
+    <div style={s.logoWrap} className="pb-logo">
       {logoUrl
         ? <img src={logoUrl} alt="Logo" style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
         : <div style={s.logoText}>Interview<span style={s.accent}>OS</span></div>
