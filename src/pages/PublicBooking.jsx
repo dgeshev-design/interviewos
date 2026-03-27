@@ -18,9 +18,8 @@ export default function PublicBooking() {
   useEffect(() => {
     if (step === 'book' && !calendarDate) {
       const firstSlot = (data?.slots || [])[0]
-      const firstDate = firstSlot ? parseISO(firstSlot.starts_at) : new Date()
-      setCalendarDate(firstDate)
-      if (firstSlot) setSelectedDate(firstDate)
+      setCalendarDate(firstSlot ? parseISO(firstSlot.starts_at) : new Date())
+      setSelectedDate(new Date())
     }
   }, [step])
 
@@ -93,6 +92,18 @@ export default function PublicBooking() {
     fieldWrap:{ marginBottom: 16 },
   }
 
+  const mobileStyles = (
+    <style>{`
+      @media (max-width: 540px) {
+        .pb-wrap { padding-left: 0 !important; padding-right: 0 !important; }
+        .pb-card { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
+        .pb-card-body { padding: 20px 16px !important; }
+        .pb-btn-row { flex-direction: column !important; }
+        .pb-btn-row button { width: 100% !important; flex: none !important; }
+      }
+    `}</style>
+  )
+
   const logoEl = (
     <div style={s.logoWrap}>
       {logoUrl
@@ -108,9 +119,9 @@ export default function PublicBooking() {
   if (error && !data) return <div style={s.page}><div style={s.wrap}>{logoEl}<div style={s.err}>{error}</div></div></div>
 
   if (step === 'disqualified') return (
-    <div style={s.page}><div style={s.wrap}>
+    <div style={s.page}>{mobileStyles}<div style={s.wrap} className="pb-wrap">
       {logoEl}
-      <div style={s.card}>{cardTop}<div style={s.cardBody}>
+      <div style={s.card} className="pb-card">{cardTop}<div style={s.cardBody} className="pb-card-body">
         <div style={{fontSize:32,marginBottom:12}}>🙏</div>
         <div style={s.h2}>Thanks for your interest</div>
         <p style={s.sub}>Unfortunately you don't meet the criteria for this research study. We appreciate your time!</p>
@@ -119,9 +130,9 @@ export default function PublicBooking() {
   )
 
   if (step === 'done') return (
-    <div style={s.page}><div style={s.wrap}>
+    <div style={s.page}>{mobileStyles}<div style={s.wrap} className="pb-wrap">
       {logoEl}
-      <div style={s.card}>{cardTop}<div style={{...s.cardBody, textAlign:'center'}}>
+      <div style={s.card} className="pb-card">{cardTop}<div style={{...s.cardBody, textAlign:'center'}} className="pb-card-body">
         <div style={{fontSize:40,marginBottom:12}}>✅</div>
         <div style={s.h2}>You're booked!</div>
         <p style={s.sub}>Thanks for signing up. You'll receive a confirmation with your session details shortly.</p>
@@ -148,9 +159,9 @@ export default function PublicBooking() {
     }
 
     return (
-      <div style={s.page}><div style={s.wrap}>
+      <div style={s.page}>{mobileStyles}<div style={s.wrap} className="pb-wrap">
         {logoEl}
-        <div style={s.card}>{cardTop}<div style={s.cardBody}>
+        <div style={s.card} className="pb-card">{cardTop}<div style={s.cardBody} className="pb-card-body">
 
           {/* Week navigation */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20 }}>
@@ -233,7 +244,7 @@ export default function PublicBooking() {
 
           {error && <div style={s.err}>{error}</div>}
 
-          <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:10 }} className="pb-btn-row">
             <button type="button" style={{ ...s.btnOut, flex:'0 0 auto', marginTop:0 }} onClick={() => setStep('form')}>Back to form</button>
             <button type="button"
               style={{ ...s.btn, marginTop:0, flex:'1 1 160px', opacity:(!selectedSlot && slots.length > 0) ? 0.4 : 1 }}
@@ -250,9 +261,9 @@ export default function PublicBooking() {
   }
 
   return (
-    <div style={s.page}><div style={s.wrap}>
+    <div style={s.page}>{mobileStyles}<div style={s.wrap} className="pb-wrap">
       {logoEl}
-      <div style={s.card}>{cardTop}<div style={s.cardBody}>
+      <div style={s.card} className="pb-card">{cardTop}<div style={s.cardBody} className="pb-card-body">
         <div style={s.h2}>{data?.study?.name || 'Research session'}</div>
         <p style={s.sub}>{data?.study?.description || 'Complete this short form to register for a research session.'}</p>
 
