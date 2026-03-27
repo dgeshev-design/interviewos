@@ -82,8 +82,7 @@ export default function PublicBooking() {
     fieldWrap:{ marginBottom: 16 },
   }
 
-  // Reusable logo element
-  const Logo = () => (
+  const logoEl = (
     <div style={s.logoWrap}>
       {logoUrl
         ? <img src={logoUrl} alt="Logo" style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
@@ -92,46 +91,38 @@ export default function PublicBooking() {
     </div>
   )
 
-  // Reusable card with optional banner
-  const CardWrap = ({ children }) => (
-    <div style={s.card}>
-      {bannerUrl && <img src={bannerUrl} alt="" style={s.banner} />}
-      <div style={s.cardBody}>{children}</div>
-    </div>
-  )
+  const cardTop = bannerUrl ? <img src={bannerUrl} alt="" style={s.banner} /> : null
 
   if (loading) return <div style={s.page}><div style={{color:'#9ca3af',fontSize:14}}>Loading…</div></div>
-  if (error && !data) return <div style={s.page}><div style={s.wrap}><Logo /><div style={s.err}>{error}</div></div></div>
+  if (error && !data) return <div style={s.page}><div style={s.wrap}>{logoEl}<div style={s.err}>{error}</div></div></div>
 
   if (step === 'disqualified') return (
     <div style={s.page}><div style={s.wrap}>
-      <Logo />
-      <CardWrap>
+      {logoEl}
+      <div style={s.card}>{cardTop}<div style={s.cardBody}>
         <div style={{fontSize:32,marginBottom:12}}>🙏</div>
         <div style={s.h2}>Thanks for your interest</div>
         <p style={s.sub}>Unfortunately you don't meet the criteria for this research study. We appreciate your time!</p>
-      </CardWrap>
+      </div></div>
     </div></div>
   )
 
   if (step === 'done') return (
     <div style={s.page}><div style={s.wrap}>
-      <Logo />
-      <CardWrap>
-        <div style={{textAlign:'center'}}>
-          <div style={{fontSize:40,marginBottom:12}}>✅</div>
-          <div style={s.h2}>You're booked!</div>
-          <p style={s.sub}>Thanks for signing up. You'll receive a confirmation with your session details shortly.</p>
-          <p style={{fontSize:12,color:'#9ca3af'}}>You can close this tab.</p>
-        </div>
-      </CardWrap>
+      {logoEl}
+      <div style={s.card}>{cardTop}<div style={{...s.cardBody, textAlign:'center'}}>
+        <div style={{fontSize:40,marginBottom:12}}>✅</div>
+        <div style={s.h2}>You're booked!</div>
+        <p style={s.sub}>Thanks for signing up. You'll receive a confirmation with your session details shortly.</p>
+        <p style={{fontSize:12,color:'#9ca3af'}}>You can close this tab.</p>
+      </div></div>
     </div></div>
   )
 
   if (step === 'book') return (
     <div style={s.page}><div style={s.wrap}>
-      <Logo />
-      <CardWrap>
+      {logoEl}
+      <div style={s.card}>{cardTop}<div style={s.cardBody}>
         <div style={s.h2}>Pick a time</div>
         <p style={s.sub}>Choose a session slot that works for you.</p>
         {slots.length === 0 ? (
@@ -158,14 +149,14 @@ export default function PublicBooking() {
             {submitting ? 'Confirming…' : slots.length === 0 ? 'Submit without booking' : 'Confirm booking'}
           </button>
         </div>
-      </CardWrap>
+      </div></div>
     </div></div>
   )
 
   return (
     <div style={s.page}><div style={s.wrap}>
-      <Logo />
-      <CardWrap>
+      {logoEl}
+      <div style={s.card}>{cardTop}<div style={s.cardBody}>
         <div style={s.h2}>{data?.study?.name || 'Research session'}</div>
         <p style={s.sub}>{data?.study?.description || 'Complete this short form to register for a research session.'}</p>
 
@@ -222,7 +213,7 @@ export default function PublicBooking() {
 
         {error && <div style={s.err}>{error}</div>}
         <button style={s.btn} onClick={handleFormSubmit}>Continue →</button>
-      </CardWrap>
+      </div></div>
     </div></div>
   )
 }
