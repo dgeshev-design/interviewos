@@ -95,6 +95,7 @@ export default function PublicBooking() {
   const mobileStyles = (
     <style>{`
       @media (max-width: 540px) {
+        .pb-page { background: #fff !important; }
         .pb-wrap { padding-left: 0 !important; padding-right: 0 !important; }
         .pb-card { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
         .pb-card-body { padding: 20px 16px !important; }
@@ -119,7 +120,7 @@ export default function PublicBooking() {
   if (error && !data) return <div style={s.page}><div style={s.wrap}>{logoEl}<div style={s.err}>{error}</div></div></div>
 
   if (step === 'disqualified') return (
-    <div style={s.page}>{mobileStyles}<div style={s.wrap} className="pb-wrap">
+    <div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
       {logoEl}
       <div style={s.card} className="pb-card">{cardTop}<div style={s.cardBody} className="pb-card-body">
         <div style={{fontSize:32,marginBottom:12}}>🙏</div>
@@ -130,7 +131,7 @@ export default function PublicBooking() {
   )
 
   if (step === 'done') return (
-    <div style={s.page}>{mobileStyles}<div style={s.wrap} className="pb-wrap">
+    <div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
       {logoEl}
       <div style={s.card} className="pb-card">{cardTop}<div style={{...s.cardBody, textAlign:'center'}} className="pb-card-body">
         <div style={{fontSize:40,marginBottom:12}}>✅</div>
@@ -159,7 +160,7 @@ export default function PublicBooking() {
     }
 
     return (
-      <div style={s.page}>{mobileStyles}<div style={s.wrap} className="pb-wrap">
+      <div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
         {logoEl}
         <div style={s.card} className="pb-card">{cardTop}<div style={s.cardBody} className="pb-card-body">
 
@@ -261,7 +262,7 @@ export default function PublicBooking() {
   }
 
   return (
-    <div style={s.page}>{mobileStyles}<div style={s.wrap} className="pb-wrap">
+    <div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
       {logoEl}
       <div style={s.card} className="pb-card">{cardTop}<div style={s.cardBody} className="pb-card-body">
         <div style={s.h2}>{data?.study?.name || 'Research session'}</div>
