@@ -10,7 +10,7 @@
     --card-foreground: 224 71% 4%;
     --popover:      0 0% 100%;
     --popover-foreground: 224 71% 4%;
-    --primary:      243 75% 59%;
+    --primary:      220 9% 12%;
     --primary-foreground: 0 0% 100%;
     --secondary:    220 14% 96%;
     --secondary-foreground: 224 71% 4%;
@@ -22,7 +22,7 @@
     --destructive-foreground: 0 0% 100%;
     --border:       220 13% 91%;
     --input:        220 13% 91%;
-    --ring:         243 75% 59%;
+    --ring:         220 9% 12%;
     --radius:       0.5rem;
 
     /* Status colours */

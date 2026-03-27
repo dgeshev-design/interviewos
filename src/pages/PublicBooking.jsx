@@ -107,7 +107,7 @@ export default function PublicBooking() {
   const s = {
     page:     { minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'clamp(16px, 5vw, 40px) 16px', fontFamily: 'Inter, system-ui, sans-serif' },
     wrap:     { width: '100%', maxWidth: 520 },
-    logoWrap: { marginBottom: 24 },
+    logoWrap: { marginBottom: 24, textAlign: 'center' },
     logoText: { fontSize: 18, fontWeight: 700, color: '#111827' },
     accent:   { color: brandColor },
     card:     { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
