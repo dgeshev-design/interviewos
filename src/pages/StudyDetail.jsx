@@ -84,9 +84,13 @@ export default function StudyDetail() {
     if (data) {
       setForm(data)
     } else {
+      const defaultFields = [
+        { id: crypto.randomUUID(), label: 'Full name', type: 'text', required: true, options: [], is_screener: false, disqualify_if: '', condition_field: '', condition_value: '' },
+        { id: crypto.randomUUID(), label: 'Email', type: 'email', required: true, options: [], is_screener: false, disqualify_if: '', condition_field: '', condition_value: '' },
+      ]
       const { data: created, error } = await supabase
         .from('forms')
-        .insert({ study_id: studyId, workspace_id: workspace.id, is_active: true, fields: [], primary_color: '#6366f1' })
+        .insert({ study_id: studyId, workspace_id: workspace.id, is_active: true, fields: defaultFields, primary_color: '#6366f1' })
         .select()
         .single()
       if (!error) setForm(created)
