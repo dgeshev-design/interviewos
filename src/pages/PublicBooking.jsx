@@ -18,7 +18,9 @@ export default function PublicBooking() {
   useEffect(() => {
     if (step === 'book' && !calendarDate) {
       const firstSlot = (data?.slots || [])[0]
-      setCalendarDate(firstSlot ? parseISO(firstSlot.starts_at) : new Date())
+      const firstDate = firstSlot ? parseISO(firstSlot.starts_at) : new Date()
+      setCalendarDate(firstDate)
+      if (firstSlot) setSelectedDate(firstDate)
     }
   }, [step])
 
@@ -72,20 +74,20 @@ export default function PublicBooking() {
 
   // ── Inline styles (standalone public page, no auth layout) ──────────────
   const s = {
-    page:     { minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', fontFamily: 'Inter, system-ui, sans-serif' },
+    page:     { minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'clamp(16px, 5vw, 40px) 16px', fontFamily: 'Inter, system-ui, sans-serif' },
     wrap:     { width: '100%', maxWidth: 520 },
     logoWrap: { marginBottom: 24 },
     logoText: { fontSize: 18, fontWeight: 700, color: '#111827' },
     accent:   { color: brandColor },
     card:     { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
-    cardBody: { padding: 32 },
-    banner:   { width: '100%', height: 140, objectFit: 'cover', display: 'block' },
-    h2:       { fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 4 },
+    cardBody: { padding: 'clamp(16px, 6vw, 32px)' },
+    banner:   { width: '100%', height: 'clamp(80px, 20vw, 140px)', objectFit: 'cover', display: 'block' },
+    h2:       { fontSize: 'clamp(15px, 4vw, 18px)', fontWeight: 600, color: '#111827', marginBottom: 4 },
     sub:      { fontSize: 13.5, color: '#6b7280', marginBottom: 24, lineHeight: 1.6 },
     label:    { display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 },
     input:    { width: '100%', border: '1px solid #d1d5db', borderRadius: 8, color: '#111827', fontSize: 13.5, padding: '9px 12px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' },
-    btn:      { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '10px 16px', borderRadius: 8, background: brandColor, color: '#fff', fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer', marginTop: 20 },
-    btnOut:   { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 20px', borderRadius: 8, background: 'transparent', border: '1px solid #d1d5db', color: '#6b7280', fontSize: 14, fontWeight: 500, cursor: 'pointer' },
+    btn:      { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '11px 16px', borderRadius: 8, background: brandColor, color: '#fff', fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer', marginTop: 20 },
+    btnOut:   { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '11px 20px', borderRadius: 8, background: 'transparent', border: '1px solid #d1d5db', color: '#6b7280', fontSize: 14, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' },
     err:      { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', color: '#dc2626', fontSize: 13, marginTop: 12 },
     slot:     (sel) => ({ border: `1px solid ${sel ? brandColor : '#e5e7eb'}`, background: sel ? `${brandColor}18` : '#fff', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', marginBottom: 8, transition: '0.15s' }),
     fieldWrap:{ marginBottom: 16 },
@@ -196,7 +198,7 @@ export default function PublicBooking() {
               <div style={{ fontWeight:600, fontSize:14, marginBottom:14, color:'#374151', textAlign:'center' }}>
                 {format(selectedDate,'EEEE')} · {format(selectedDate,'MMMM yyyy')} · {duration} min
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 10, marginBottom: 20 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))', gap: 10, marginBottom: 20 }}>
                 {daySlots.map(slot => {
                   const sel = selectedSlot === slot.id
                   return (
@@ -231,10 +233,10 @@ export default function PublicBooking() {
 
           {error && <div style={s.err}>{error}</div>}
 
-          <div style={{ display:'flex', gap:10 }}>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
             <button type="button" style={{ ...s.btnOut, flex:'0 0 auto', marginTop:0 }} onClick={() => setStep('form')}>Back to form</button>
             <button type="button"
-              style={{ ...s.btn, marginTop:0, flex:1, opacity:(!selectedSlot && slots.length > 0) ? 0.4 : 1 }}
+              style={{ ...s.btn, marginTop:0, flex:'1 1 160px', opacity:(!selectedSlot && slots.length > 0) ? 0.4 : 1 }}
               onClick={handleBooking}
               disabled={submitting || (slots.length > 0 && !selectedSlot)}
             >
