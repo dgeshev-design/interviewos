@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, startOfWeek, addDays, isSameDay, isToday } from 'date-fns'
 import { submitPublicForm } from '@/lib/api'
 
 export default function PublicBooking() {
@@ -9,9 +9,18 @@ export default function PublicBooking() {
   const [step, setStep]         = useState('form') // form | book | done | disqualified | error
   const [answers, setAnswers]   = useState({})
   const [selectedSlot, setSelectedSlot] = useState(null)
+  const [calendarDate, setCalendarDate] = useState(null) // week anchor date
+  const [selectedDate, setSelectedDate] = useState(null)
   const [loading, setLoading]   = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]       = useState('')
+
+  useEffect(() => {
+    if (step === 'book' && !calendarDate) {
+      const firstSlot = (data?.slots || [])[0]
+      setCalendarDate(firstSlot ? parseISO(firstSlot.starts_at) : new Date())
+    }
+  }, [step])
 
   useEffect(() => {
     fetch(`/api/public?action=get-study&slug=${studySlug}`)
@@ -119,39 +128,124 @@ export default function PublicBooking() {
     </div></div>
   )
 
-  if (step === 'book') return (
-    <div style={s.page}><div style={s.wrap}>
-      {logoEl}
-      <div style={s.card}>{cardTop}<div style={s.cardBody}>
-        <div style={s.h2}>Pick a time</div>
-        <p style={s.sub}>Choose a session slot that works for you.</p>
-        {slots.length === 0 ? (
-          <p style={{color:'#9ca3af',fontSize:13.5,padding:'16px 0'}}>No slots available right now. The team will contact you to schedule.</p>
-        ) : (
-          slots.map(slot => {
-            const d = parseISO(slot.starts_at)
-            return (
-              <div key={slot.id} style={s.slot(selectedSlot === slot.id)} onClick={() => setSelectedSlot(slot.id)}>
-                <div style={{fontWeight:500,fontSize:14,color:'#111827'}}>{format(d,'EEEE, MMMM d')}</div>
-                <div style={{fontSize:12.5,color:'#6b7280',marginTop:2}}>{format(d,'HH:mm')} · {slot.duration_minutes} min</div>
+  if (step === 'book') {
+    const anchor   = calendarDate || new Date()
+    const wStart   = startOfWeek(anchor, { weekStartsOn: 0 })
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(wStart, i))
+    const slotsForDate = (d) => slots.filter(s => isSameDay(parseISO(s.starts_at), d))
+    const hasSlots = (d) => slotsForDate(d).length > 0
+    const daySlots  = selectedDate ? slotsForDate(selectedDate) : []
+    const duration  = slots[0]?.duration_minutes || 60
+
+    const navBtn = {
+      width: 36, height: 36, borderRadius: 8,
+      border: '1px solid #e5e7eb', background: '#fff',
+      cursor: 'pointer', fontSize: 16, color: '#374151',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: 'inherit',
+    }
+
+    return (
+      <div style={s.page}><div style={s.wrap}>
+        {logoEl}
+        <div style={s.card}>{cardTop}<div style={s.cardBody}>
+
+          {/* Week navigation */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 20 }}>
+            <button type="button" style={navBtn} onClick={() => { setCalendarDate(addDays(anchor, -7)); setSelectedDate(null); setSelectedSlot(null) }}>‹</button>
+            <span style={{ fontWeight: 600, fontSize: 16, color: '#111827' }}>{format(wStart, 'MMMM yyyy')}</span>
+            <button type="button" style={navBtn} onClick={() => { setCalendarDate(addDays(anchor, 7)); setSelectedDate(null); setSelectedSlot(null) }}>›</button>
+          </div>
+
+          {/* Day-of-week labels */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', marginBottom: 6 }}>
+            {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+              <div key={d} style={{ textAlign:'center', fontSize:12, color:'#9ca3af', fontWeight:500, paddingBottom: 4 }}>{d}</div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap: 4, marginBottom: 24 }}>
+            {weekDays.map(day => {
+              const avail = hasSlots(day)
+              const sel   = selectedDate && isSameDay(day, selectedDate)
+              const today = isToday(day)
+              return (
+                <button
+                  key={day.toISOString()} type="button"
+                  onClick={() => { if (avail) { setSelectedDate(day); setSelectedSlot(null) } }}
+                  style={{
+                    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                    padding: '8px 2px', border: 'none', borderRadius: 10, fontFamily:'inherit',
+                    background: sel ? brandColor : today && !sel ? `${brandColor}15` : 'transparent',
+                    color: sel ? '#fff' : avail ? '#111827' : '#d1d5db',
+                    cursor: avail ? 'pointer' : 'default',
+                    outline: today && !sel ? `1.5px solid ${brandColor}40` : 'none',
+                  }}
+                >
+                  <span style={{ fontSize:17, fontWeight: sel||today ? 600 : 400, lineHeight:1.2 }}>{format(day,'d')}</span>
+                  <span style={{ fontSize:11, marginTop:2, color: sel ? 'rgba(255,255,255,0.75)' : '#9ca3af' }}>{format(day,'MMM')}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Time slots for selected day */}
+          {selectedDate && daySlots.length > 0 && (
+            <>
+              <div style={{ fontWeight:600, fontSize:14, marginBottom:14, color:'#374151', textAlign:'center' }}>
+                {format(selectedDate,'EEEE')} · {format(selectedDate,'MMMM yyyy')} · {duration} min
               </div>
-            )
-          })
-        )}
-        {error && <div style={s.err}>{error}</div>}
-        <div style={{display:'flex',gap:10,marginTop:20}}>
-          <button style={{...s.btnOut,flex:'0 0 auto'}} onClick={() => setStep('form')}>Back</button>
-          <button
-            style={{...s.btn,marginTop:0,flex:1,opacity:(slots.length > 0 && !selectedSlot)?0.4:1}}
-            onClick={handleBooking}
-            disabled={submitting || (slots.length > 0 && !selectedSlot)}
-          >
-            {submitting ? 'Confirming…' : slots.length === 0 ? 'Submit without booking' : 'Confirm booking'}
-          </button>
-        </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 10, marginBottom: 20 }}>
+                {daySlots.map(slot => {
+                  const sel = selectedSlot === slot.id
+                  return (
+                    <button key={slot.id} type="button"
+                      onClick={() => setSelectedSlot(slot.id)}
+                      style={{
+                        padding:'14px 8px', borderRadius:10, fontFamily:'inherit',
+                        border:`1.5px solid ${sel ? brandColor : '#e5e7eb'}`,
+                        background: sel ? brandColor : '#f9fafb',
+                        color: sel ? '#fff' : '#374151',
+                        fontSize:15, fontWeight:500, cursor:'pointer', textAlign:'center',
+                      }}
+                    >
+                      {format(parseISO(slot.starts_at),'h:mm a')}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          {!selectedDate && slots.length > 0 && (
+            <p style={{ textAlign:'center', color:'#9ca3af', fontSize:13.5, padding:'8px 0 20px' }}>
+              Select a date above to see available times.
+            </p>
+          )}
+          {slots.length === 0 && (
+            <p style={{ textAlign:'center', color:'#9ca3af', fontSize:13.5, padding:'8px 0 20px' }}>
+              No slots available right now. The team will contact you to schedule.
+            </p>
+          )}
+
+          {error && <div style={s.err}>{error}</div>}
+
+          <div style={{ display:'flex', gap:10 }}>
+            <button type="button" style={{ ...s.btnOut, flex:'0 0 auto', marginTop:0 }} onClick={() => setStep('form')}>Back to form</button>
+            <button type="button"
+              style={{ ...s.btn, marginTop:0, flex:1, opacity:(!selectedSlot && slots.length > 0) ? 0.4 : 1 }}
+              onClick={handleBooking}
+              disabled={submitting || (slots.length > 0 && !selectedSlot)}
+            >
+              {submitting ? 'Confirming…' : slots.length === 0 ? 'Submit without booking' : 'Confirm booking'}
+            </button>
+          </div>
+
+        </div></div>
       </div></div>
-    </div></div>
-  )
+    )
+  }
 
   return (
     <div style={s.page}><div style={s.wrap}>
