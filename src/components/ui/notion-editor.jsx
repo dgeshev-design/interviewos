@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import EditorJS from '@editorjs/editorjs'
 import Header from '@editorjs/header'
 import List from '@editorjs/list'
@@ -25,10 +25,12 @@ export default function NotionEditor({
   readOnly = false,
   style,
 }) {
+  const wrapRef    = useRef(null)
   const holderRef  = useRef(null)
   const editorRef  = useRef(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const [focused, setFocused] = useState(false)
 
   // Forward text selection to parent (for "Add as quote")
   useEffect(() => {
@@ -82,14 +84,27 @@ export default function NotionEditor({
 
   return (
     <div
-      ref={holderRef}
+      ref={wrapRef}
+      onFocus={() => !readOnly && setFocused(true)}
+      onBlur={() => setFocused(false)}
       style={{
-        width: '100%',
-        minHeight: readOnly ? undefined : 200,
-        fontSize: 14,
-        lineHeight: 1.6,
+        border: readOnly ? 'none' : `1px solid ${focused ? '#6366f1' : '#e5e7eb'}`,
+        borderRadius: 8,
+        boxShadow: focused ? '0 0 0 3px rgba(99,102,241,0.15)' : 'none',
+        transition: 'border-color 0.15s, box-shadow 0.15s',
+        padding: readOnly ? 0 : '4px 8px',
         ...style,
       }}
-    />
+    >
+      <div
+        ref={holderRef}
+        style={{
+          width: '100%',
+          minHeight: readOnly ? undefined : 180,
+          fontSize: 14,
+          lineHeight: 1.6,
+        }}
+      />
+    </div>
   )
 }
