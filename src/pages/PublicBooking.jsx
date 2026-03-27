@@ -3,6 +3,30 @@ import { useParams } from 'react-router-dom'
 import { format, parseISO, startOfWeek, addDays, isSameDay, isToday } from 'date-fns'
 import { submitPublicForm } from '@/lib/api'
 
+const PHONE_CODES = [
+  { code: '+1',   label: '🇺🇸 +1' },  { code: '+44',  label: '🇬🇧 +44' },
+  { code: '+49',  label: '🇩🇪 +49' },  { code: '+33',  label: '🇫🇷 +33' },
+  { code: '+34',  label: '🇪🇸 +34' },  { code: '+39',  label: '🇮🇹 +39' },
+  { code: '+31',  label: '🇳🇱 +31' },  { code: '+46',  label: '🇸🇪 +46' },
+  { code: '+47',  label: '🇳🇴 +47' },  { code: '+45',  label: '🇩🇰 +45' },
+  { code: '+358', label: '🇫🇮 +358' }, { code: '+41',  label: '🇨🇭 +41' },
+  { code: '+43',  label: '🇦🇹 +43' },  { code: '+32',  label: '🇧🇪 +32' },
+  { code: '+351', label: '🇵🇹 +351' }, { code: '+48',  label: '🇵🇱 +48' },
+  { code: '+420', label: '🇨🇿 +420' }, { code: '+36',  label: '🇭🇺 +36' },
+  { code: '+40',  label: '🇷🇴 +40' },  { code: '+7',   label: '🇷🇺 +7' },
+  { code: '+380', label: '🇺🇦 +380' }, { code: '+90',  label: '🇹🇷 +90' },
+  { code: '+972', label: '🇮🇱 +972' }, { code: '+971', label: '🇦🇪 +971' },
+  { code: '+966', label: '🇸🇦 +966' }, { code: '+91',  label: '🇮🇳 +91' },
+  { code: '+86',  label: '🇨🇳 +86' },  { code: '+81',  label: '🇯🇵 +81' },
+  { code: '+82',  label: '🇰🇷 +82' },  { code: '+65',  label: '🇸🇬 +65' },
+  { code: '+61',  label: '🇦🇺 +61' },  { code: '+64',  label: '🇳🇿 +64' },
+  { code: '+55',  label: '🇧🇷 +55' },  { code: '+52',  label: '🇲🇽 +52' },
+  { code: '+54',  label: '🇦🇷 +54' },  { code: '+56',  label: '🇨🇱 +56' },
+  { code: '+57',  label: '🇨🇴 +57' },  { code: '+27',  label: '🇿🇦 +27' },
+  { code: '+20',  label: '🇪🇬 +20' },  { code: '+234', label: '🇳🇬 +234' },
+  { code: '+254', label: '🇰🇪 +254' },
+]
+
 export default function PublicBooking() {
   const { studySlug } = useParams()
   const [data, setData]         = useState(null)   // { study, form, slots }
@@ -49,7 +73,15 @@ export default function PublicBooking() {
   }
 
   const handleFormSubmit = () => {
-    const missing = fields.filter(f => f.required && !answers[f.id]?.toString().trim())
+    const missing = fields.filter(f => {
+      if (!f.required) return false
+      const val = answers[f.id]
+      if (f.type === 'tel') {
+        const num = val?.includes('|') ? val.split('|')[1] : val
+        return !num?.trim()
+      }
+      return !val?.toString().trim()
+    })
     if (missing.length) { setError(`Please fill in: ${missing.map(f => f.label).join(', ')}`); return }
     setError('')
     if (!checkScreeners()) { setStep('disqualified'); return }
@@ -312,7 +344,38 @@ export default function PublicBooking() {
                 </div>
               ) : field.type === 'textarea' ? (
                 <textarea style={{...s.input,minHeight:80,resize:'vertical'}} value={answers[field.id]||''} onChange={e => setAnswers(a=>({...a,[field.id]:e.target.value}))} />
-              ) : (
+              ) : field.type === 'tel' ? (() => {
+                const defaultCode = field.phone_default_code || '+1'
+                const locked      = !!field.phone_lock_code
+                const stored      = answers[field.id] || ''
+                // stored as "CODE|NUMBER" internally
+                const [storedCode, storedNum] = stored.includes('|') ? stored.split('|') : [defaultCode, stored]
+                const setPhone = (code, num) => setAnswers(a => ({...a, [field.id]: `${code}|${num}`}))
+                return (
+                  <div style={{display:'flex',gap:6}}>
+                    {locked ? (
+                      <span style={{...s.input, width:'auto', minWidth:72, flexShrink:0, background:'#f3f4f6', color:'#6b7280', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13}}>
+                        {storedCode || defaultCode}
+                      </span>
+                    ) : (
+                      <select
+                        style={{...s.input, width:'auto', minWidth:90, flexShrink:0, paddingRight:8}}
+                        value={storedCode || defaultCode}
+                        onChange={e => setPhone(e.target.value, storedNum)}
+                      >
+                        {PHONE_CODES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+                      </select>
+                    )}
+                    <input
+                      type="tel"
+                      placeholder="Phone number"
+                      style={{...s.input, flex:1}}
+                      value={storedNum}
+                      onChange={e => setPhone(storedCode || defaultCode, e.target.value)}
+                    />
+                  </div>
+                )
+              })() : (
                 <input type={field.type||'text'} style={s.input} value={answers[field.id]||''} onChange={e => setAnswers(a=>({...a,[field.id]:e.target.value}))} />
               )}
             </div>
