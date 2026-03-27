@@ -46,9 +46,18 @@ export default async function handler(req, res) {
         slot = slots[0] || null
       }
 
-      const name  = Object.entries(answers).find(([k]) => k.toLowerCase().includes('name'))?.[1]  || 'Unknown'
-      const email = Object.entries(answers).find(([k]) => k.toLowerCase().includes('email'))?.[1] || ''
-      const phone = Object.entries(answers).find(([k]) => k.toLowerCase().includes('phone'))?.[1] || ''
+      // Fetch form fields to resolve field IDs → labels/types
+      let formFields = []
+      if (formId) {
+        const fmR = await fetch(`${SB_URL}/rest/v1/forms?id=eq.${formId}&select=fields`, { headers: hdrs })
+        const [fm] = await fmR.json()
+        formFields = fm?.fields || []
+      }
+      const byType  = (type)    => { const f = formFields.find(f => f.type === type);                           return f ? (answers[f.id] || '') : '' }
+      const byLabel = (pattern) => { const f = formFields.find(f => f.label?.toLowerCase().includes(pattern));  return f ? (answers[f.id] || '') : '' }
+      const name  = byLabel('name')  || Object.values(answers)[0] || 'Unknown'
+      const email = byType('email')  || byLabel('email')
+      const phone = byType('tel')    || byLabel('phone')
 
       const pr = await fetch(`${SB_URL}/rest/v1/participants`, {
         method: 'POST', headers: { ...hdrs, 'Prefer': 'return=representation' },

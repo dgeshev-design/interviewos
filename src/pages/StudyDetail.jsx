@@ -85,8 +85,8 @@ export default function StudyDetail() {
       setForm(data)
     } else {
       const defaultFields = [
-        { id: crypto.randomUUID(), label: 'Full name', type: 'text', required: true, options: [], is_screener: false, disqualify_if: '', condition_field: '', condition_value: '' },
-        { id: crypto.randomUUID(), label: 'Email', type: 'email', required: true, options: [], is_screener: false, disqualify_if: '', condition_field: '', condition_value: '' },
+        { id: crypto.randomUUID(), label: 'Full name', type: 'text',  required: true, system: true, options: [], is_screener: false, disqualify_if: '', condition_field: '', condition_value: '' },
+        { id: crypto.randomUUID(), label: 'Email',     type: 'email', required: true, system: true, options: [], is_screener: false, disqualify_if: '', condition_field: '', condition_value: '' },
       ]
       const { data: created, error } = await supabase
         .from('forms')
@@ -486,6 +486,7 @@ export default function StudyDetail() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-medium truncate">{f.label}</span>
+                            {f.system && <Badge className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-600 border-blue-200">System</Badge>}
                             {f.required && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Required</Badge>}
                             {f.is_screener && <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">Screener</Badge>}
                             {f.condition_field && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Conditional</Badge>}
@@ -500,10 +501,12 @@ export default function StudyDetail() {
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditField(f)}>
                             <Edit2 className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive"
-                            onClick={() => { if (confirm('Delete this field?')) deleteField(f.id) }}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          {!f.system && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive"
+                              onClick={() => { if (confirm('Delete this field?')) deleteField(f.id) }}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -598,18 +601,25 @@ export default function StudyDetail() {
               {/* Type */}
               <div className="space-y-1.5">
                 <Label>Field type</Label>
-                <Select
-                  value={editingField.type}
-                  onValueChange={v => setEditingField(f => ({
-                    ...f, type: v,
-                    options: (v === 'select' || v === 'multi_select') ? (f.options || []) : [],
-                    disqualify_if: '',
-                  }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {FIELD_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                {editingField.system ? (
+                  <div className="flex h-9 items-center px-3 rounded-md border bg-muted text-sm text-muted-foreground">
+                    {FIELD_TYPES.find(t => t.value === editingField.type)?.label}
+                    <span className="ml-auto text-xs text-blue-500">Locked</span>
+                  </div>
+                ) : (
+                  <Select
+                    value={editingField.type}
+                    onValueChange={v => setEditingField(f => ({
+                      ...f, type: v,
+                      options: (v === 'select' || v === 'multi_select') ? (f.options || []) : [],
+                      disqualify_if: '',
+                    }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {FIELD_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {/* Options (select / multi_select) */}
@@ -639,14 +649,16 @@ export default function StudyDetail() {
               )}
 
               {/* Required */}
-              <label className="flex items-center gap-2.5 cursor-pointer">
+              <label className={cn('flex items-center gap-2.5', editingField.system ? 'opacity-60' : 'cursor-pointer')}>
                 <input
                   type="checkbox"
                   checked={editingField.required}
-                  onChange={e => setEditingField(f => ({ ...f, required: e.target.checked }))}
+                  onChange={e => !editingField.system && setEditingField(f => ({ ...f, required: e.target.checked }))}
+                  disabled={editingField.system}
                   className="rounded"
                 />
                 <span className="text-sm font-medium">Required</span>
+                {editingField.system && <span className="text-xs text-blue-500 ml-1">Always required</span>}
               </label>
 
               {/* Screener logic */}
