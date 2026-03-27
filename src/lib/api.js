@@ -7,11 +7,19 @@ async function post(path, body) {
   return res.json()
 }
 
-export const sendEmail       = (data) => post('/api/send-email',        data)
-export const sendWhatsApp    = (data) => post('/api/send-whatsapp',     data)
-export const sendSMS         = (data) => post('/api/send-sms',          data)
-export const createCalEvent  = (data) => post('/api/create-calendar-event', data)
-export const syncGCal        = (data) => post('/api/sync-gcal',         data)
-export const generateSlots   = (data) => post('/api/generate-slots',    data)
-export const saveGoogleToken = (data) => post('/api/save-google-token', data)
-export const submitPublicForm= (data) => post('/api/submit-form',       data)
+async function get(path) {
+  const res = await fetch(path)
+  return res.json()
+}
+
+export const sendEmail    = (data) => post('/api/comms', { action: 'email',     ...data })
+export const sendWhatsApp = (data) => post('/api/comms', { action: 'whatsapp',  ...data })
+export const sendSMS      = (data) => post('/api/comms', { action: 'sms',       ...data })
+
+export const syncGCal        = (data) => post('/api/calendar?action=sync',       data)
+export const createCalEvent  = (data) => post('/api/calendar?action=create',     data)
+export const generateSlots   = (data) => post('/api/calendar?action=generate',   data)
+export const saveGoogleToken = (data) => post('/api/calendar?action=save-token', data)
+
+export const getPublicStudy   = (slug) => get(`/api/public?action=get-study&slug=${encodeURIComponent(slug)}`)
+export const submitPublicForm = (data) => post('/api/public?action=submit',      data)
