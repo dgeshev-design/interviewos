@@ -4,6 +4,7 @@ import { useSlots } from '@/hooks/useSlots'
 import { useStudies } from '@/hooks/useStudies'
 import { useApp } from '@/context/AppContext'
 import { generateSlots, syncGCal } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,6 +33,124 @@ export default function Calendar() {
   const [syncing, setSyncing]       = useState(false)
   const [generating, setGenerating] = useState(false)
   const [genResult, setGenResult]   = useState(null)
+
+  // Pick-slots modal state
+  const [showPick, setShowPick]       = useState(false)
+  const [pickWeek, setPickWeek]       = useState(startOfWeek(new Date(), { weekStartsOn: 1 }))
+  const [pickDur, setPickDur]         = useState(60)
+  const [pickStudy, setPickStudy]     = useState('__all__')
+  const [picked, setPicked]           = useState(new Set()) // "YYYY-MM-DDTHH:mm" UTC keys
+  const [pickSaving, setPickSaving]   = useState(false)
+
+  const pickDays = Array.from({ length: 7 }, (_, i) => addDays(pickWeek, i))
+
+  // Generate HH:mm time labels for the pick grid (UTC, 07:00–22:00)
+  const pickTimes = (() => {
+    const times = []
+    let m = 7 * 60
+    while (m + pickDur <= 22 * 60) {
+      times.push(`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`)
+      m += pickDur
+    }
+    return times
+  })()
+
+  // Slot key from date + time string
+  const slotKey = (day, time) => `${format(day,'yyyy-MM-dd')}T${time}`
+
+  // Open pick modal — pre-fill from existing available (non-gcal) slots in that week
+  const openPickSlots = () => {
+    const wStart = startOfWeek(new Date(), { weekStartsOn: 1 })
+    setPickWeek(wStart)
+    const initKeys = new Set()
+    slots.forEach(s => {
+      if (s.is_gcal_block || !s.available) return
+      const d = parseISO(s.starts_at)
+      if (d >= wStart && d < addDays(wStart, 7)) {
+        const key = `${format(d,'yyyy-MM-dd')}T${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`
+        initKeys.add(key)
+      }
+    })
+    setPicked(initKeys)
+    setShowPick(true)
+  }
+
+  // When week changes in pick modal, update picked to reflect existing slots for new week
+  const changePickWeek = (dir) => {
+    const newWeek = addDays(pickWeek, dir * 7)
+    setPickWeek(newWeek)
+    const initKeys = new Set()
+    slots.forEach(s => {
+      if (s.is_gcal_block || !s.available) return
+      const d = parseISO(s.starts_at)
+      if (d >= newWeek && d < addDays(newWeek, 7)) {
+        const key = `${format(d,'yyyy-MM-dd')}T${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`
+        initKeys.add(key)
+      }
+    })
+    setPicked(initKeys)
+  }
+
+  const togglePick = (day, time) => {
+    const key = slotKey(day, time)
+    // Don't allow toggling booked slots
+    const booked = slots.find(s => {
+      const d = parseISO(s.starts_at)
+      const k = `${format(d,'yyyy-MM-dd')}T${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`
+      return k === key && !s.available && !s.is_gcal_block
+    })
+    if (booked) return
+    setPicked(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  const handleSavePick = async () => {
+    setPickSaving(true)
+    try {
+      // Existing available (non-gcal) slots in this pick week
+      const weekSlots = slots.filter(s => {
+        if (s.is_gcal_block || !s.available) return false
+        const d = parseISO(s.starts_at)
+        return d >= pickWeek && d < addDays(pickWeek, 7)
+      })
+      const existingKeys = new Set(weekSlots.map(s => {
+        const d = parseISO(s.starts_at)
+        return `${format(d,'yyyy-MM-dd')}T${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`
+      }))
+
+      // Delete deselected
+      const toDelete = weekSlots.filter(s => {
+        const d = parseISO(s.starts_at)
+        const k = `${format(d,'yyyy-MM-dd')}T${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`
+        return !picked.has(k)
+      })
+      for (const s of toDelete) await supabase.from('slots').delete().eq('id', s.id)
+
+      // Insert newly selected
+      const toInsert = [...picked].filter(k => !existingKeys.has(k)).map(k => {
+        const starts_at = `${k}:00Z`
+        const ends_at   = new Date(new Date(starts_at).getTime() + pickDur * 60000).toISOString()
+        return {
+          workspace_id: workspace.id,
+          study_id: pickStudy !== '__all__' ? pickStudy : null,
+          starts_at, ends_at,
+          duration_minutes: pickDur,
+          available: true, is_gcal_block: false, meet_link: '',
+        }
+      })
+      if (toInsert.length) await supabase.from('slots').insert(toInsert)
+
+      await refetch()
+      toast({ title: `Saved — ${toInsert.length} added, ${toDelete.length} removed`, variant: 'success' })
+      setShowPick(false)
+    } catch (e) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' })
+    }
+    setPickSaving(false)
+  }
 
   const [windowForm, setWindowForm] = useState({
     studyId: '__all__',
@@ -119,6 +238,9 @@ export default function Calendar() {
             <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
               <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', syncing && 'animate-spin')} />
               {syncing ? 'Syncing…' : 'Sync Google Cal'}
+            </Button>
+            <Button size="sm" variant="outline" onClick={openPickSlots}>
+              <CalendarPlus className="h-3.5 w-3.5 mr-1.5" /> Pick slots
             </Button>
             <Button size="sm" onClick={() => setShowWindow(true)}>
               <CalendarPlus className="h-3.5 w-3.5 mr-1.5" /> Set availability
@@ -270,6 +392,108 @@ export default function Calendar() {
           </CardContent>
         </Card>
       )}
+
+      {/* Pick slots modal */}
+      <Dialog open={showPick} onOpenChange={v => { if (!v) setShowPick(false) }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Pick available slots</DialogTitle>
+          </DialogHeader>
+
+          {/* Controls */}
+          <div className="flex flex-wrap items-center gap-3 pb-2 border-b">
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => changePickWeek(-1)} className="h-7 w-7 rounded border flex items-center justify-center hover:bg-muted">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-sm font-medium w-32 text-center">{format(pickWeek,'d MMM')} – {format(addDays(pickWeek,6),'d MMM yyyy')}</span>
+              <button type="button" onClick={() => changePickWeek(1)} className="h-7 w-7 rounded border flex items-center justify-center hover:bg-muted">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <Select value={String(pickDur)} onValueChange={v => setPickDur(Number(v))}>
+              <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {['20','30','45','60','75','90','120'].map(m => <SelectItem key={m} value={m}>{m} min</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={pickStudy} onValueChange={setPickStudy}>
+              <SelectTrigger className="h-7 w-36 text-xs"><SelectValue placeholder="All studies" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All studies</SelectItem>
+                {(studies||[]).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground ml-auto">{picked.size} slot{picked.size !== 1 ? 's' : ''} selected</span>
+          </div>
+
+          {/* Grid */}
+          <div className="overflow-auto max-h-[420px]">
+            <div style={{ display:'grid', gridTemplateColumns:`52px repeat(7, 1fr)`, minWidth:480 }}>
+              {/* Day headers */}
+              <div />
+              {pickDays.map(day => (
+                <div key={day.toISOString()} className={cn('text-center pb-2 text-xs font-medium sticky top-0 bg-background z-10', isToday(day) && 'text-primary')}>
+                  <div>{DAYS[day.getDay()]}</div>
+                  <div className={cn('text-lg font-semibold leading-tight', isToday(day) ? 'text-primary' : 'text-foreground')}>{format(day,'d')}</div>
+                </div>
+              ))}
+              {/* Time rows */}
+              {pickTimes.map(time => (
+                <>
+                  <div key={`lbl-${time}`} className="text-[11px] text-muted-foreground text-right pr-2 pt-1 leading-none">{time}</div>
+                  {pickDays.map(day => {
+                    const key = slotKey(day, time)
+                    const isSel = picked.has(key)
+                    const bookedSlot = slots.find(s => {
+                      const d = parseISO(s.starts_at)
+                      return `${format(d,'yyyy-MM-dd')}T${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}` === key && !s.available && !s.is_gcal_block
+                    })
+                    const gcalSlot = slots.find(s => {
+                      const d = parseISO(s.starts_at)
+                      return `${format(d,'yyyy-MM-dd')}T${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}` === key && s.is_gcal_block
+                    })
+                    return (
+                      <div key={key} className="px-0.5 pb-0.5">
+                        <button
+                          type="button"
+                          onClick={() => togglePick(day, time)}
+                          disabled={!!bookedSlot || !!gcalSlot}
+                          title={bookedSlot ? `Booked: ${bookedSlot.participants?.name}` : gcalSlot ? 'Google Calendar busy' : ''}
+                          className={cn(
+                            'w-full rounded text-[10px] font-medium transition-colors border',
+                            'h-7 leading-none',
+                            bookedSlot ? 'bg-blue-100 border-blue-300 text-blue-700 cursor-not-allowed'
+                            : gcalSlot  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                            : isSel     ? 'bg-primary border-primary text-primary-foreground'
+                                        : 'bg-white border-border hover:bg-muted',
+                          )}
+                        >
+                          {bookedSlot ? '●' : gcalSlot ? '×' : ''}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </>
+              ))}
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t">
+            <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded border border-primary bg-primary inline-block" /> Available</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded border border-blue-300 bg-blue-100 inline-block" /> Booked</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded border border-gray-200 bg-gray-100 inline-block" /> GCal busy</span>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPick(false)}>Cancel</Button>
+            <Button onClick={handleSavePick} disabled={pickSaving}>
+              {pickSaving ? 'Saving…' : 'Save slots'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Availability window modal */}
       <Dialog open={showWindow} onOpenChange={(v) => { try { setShowWindow(v); if (!v) setGenResult(null) } catch(e){} }}>
