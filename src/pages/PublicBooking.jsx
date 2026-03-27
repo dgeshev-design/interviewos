@@ -20,9 +20,12 @@ export default function PublicBooking() {
       .catch(() => { setError('Failed to load. Please try again.'); setLoading(false) })
   }, [studySlug])
 
-  const activeForm = data?.forms?.find(f => f.is_active)
-  const fields     = activeForm?.fields || []
-  const slots      = data?.slots || []
+  const activeForm    = data?.forms?.find(f => f.is_active)
+  const fields        = activeForm?.fields || []
+  const slots         = data?.slots || []
+  const brandColor    = activeForm?.primary_color || '#6366f1'
+  const bannerUrl     = activeForm?.banner_url || null
+  const logoUrl       = activeForm?.logo_url || null
 
   const checkScreeners = () => {
     if (!fields.length) return true
@@ -62,50 +65,73 @@ export default function PublicBooking() {
   const s = {
     page:     { minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', fontFamily: 'Inter, system-ui, sans-serif' },
     wrap:     { width: '100%', maxWidth: 520 },
-    logo:     { fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 24 },
-    accent:   { color: '#6366f1' },
-    card:     { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 32, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+    logoWrap: { marginBottom: 24 },
+    logoText: { fontSize: 18, fontWeight: 700, color: '#111827' },
+    accent:   { color: brandColor },
+    card:     { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+    cardBody: { padding: 32 },
+    banner:   { width: '100%', height: 140, objectFit: 'cover', display: 'block' },
     h2:       { fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 4 },
     sub:      { fontSize: 13.5, color: '#6b7280', marginBottom: 24, lineHeight: 1.6 },
     label:    { display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 },
     input:    { width: '100%', border: '1px solid #d1d5db', borderRadius: 8, color: '#111827', fontSize: 13.5, padding: '9px 12px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' },
-    btn:      { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '10px 16px', borderRadius: 8, background: '#6366f1', color: '#fff', fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer', marginTop: 20 },
+    btn:      { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '10px 16px', borderRadius: 8, background: brandColor, color: '#fff', fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer', marginTop: 20 },
     btnOut:   { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 20px', borderRadius: 8, background: 'transparent', border: '1px solid #d1d5db', color: '#6b7280', fontSize: 14, fontWeight: 500, cursor: 'pointer' },
     err:      { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', color: '#dc2626', fontSize: 13, marginTop: 12 },
-    slot:     (sel) => ({ border: `1px solid ${sel ? '#6366f1' : '#e5e7eb'}`, background: sel ? '#eef2ff' : '#fff', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', marginBottom: 8, transition: '0.15s' }),
+    slot:     (sel) => ({ border: `1px solid ${sel ? brandColor : '#e5e7eb'}`, background: sel ? `${brandColor}18` : '#fff', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', marginBottom: 8, transition: '0.15s' }),
     fieldWrap:{ marginBottom: 16 },
   }
 
+  // Reusable logo element
+  const Logo = () => (
+    <div style={s.logoWrap}>
+      {logoUrl
+        ? <img src={logoUrl} alt="Logo" style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+        : <div style={s.logoText}>Interview<span style={s.accent}>OS</span></div>
+      }
+    </div>
+  )
+
+  // Reusable card with optional banner
+  const CardWrap = ({ children }) => (
+    <div style={s.card}>
+      {bannerUrl && <img src={bannerUrl} alt="" style={s.banner} />}
+      <div style={s.cardBody}>{children}</div>
+    </div>
+  )
+
   if (loading) return <div style={s.page}><div style={{color:'#9ca3af',fontSize:14}}>Loading…</div></div>
-  if (error && !data) return <div style={s.page}><div style={s.wrap}><div style={s.logo}>Interview<span style={s.accent}>OS</span></div><div style={s.err}>{error}</div></div></div>
+  if (error && !data) return <div style={s.page}><div style={s.wrap}><Logo /><div style={s.err}>{error}</div></div></div>
 
   if (step === 'disqualified') return (
     <div style={s.page}><div style={s.wrap}>
-      <div style={s.logo}>Interview<span style={s.accent}>OS</span></div>
-      <div style={s.card}>
+      <Logo />
+      <CardWrap>
         <div style={{fontSize:32,marginBottom:12}}>🙏</div>
         <div style={s.h2}>Thanks for your interest</div>
         <p style={s.sub}>Unfortunately you don't meet the criteria for this research study. We appreciate your time!</p>
-      </div>
+      </CardWrap>
     </div></div>
   )
 
   if (step === 'done') return (
     <div style={s.page}><div style={s.wrap}>
-      <div style={s.logo}>Interview<span style={s.accent}>OS</span></div>
-      <div style={{...s.card, textAlign:'center'}}>
-        <div style={{fontSize:40,marginBottom:12}}>✅</div>
-        <div style={s.h2}>You're booked!</div>
-        <p style={s.sub}>Thanks for signing up. You'll receive a confirmation with your session details shortly.</p>
-        <p style={{fontSize:12,color:'#9ca3af'}}>You can close this tab.</p>
-      </div>
+      <Logo />
+      <CardWrap>
+        <div style={{textAlign:'center'}}>
+          <div style={{fontSize:40,marginBottom:12}}>✅</div>
+          <div style={s.h2}>You're booked!</div>
+          <p style={s.sub}>Thanks for signing up. You'll receive a confirmation with your session details shortly.</p>
+          <p style={{fontSize:12,color:'#9ca3af'}}>You can close this tab.</p>
+        </div>
+      </CardWrap>
     </div></div>
   )
 
   if (step === 'book') return (
     <div style={s.page}><div style={s.wrap}>
-      <div style={s.logo}>Interview<span style={s.accent}>OS</span></div>
-      <div style={s.card}>
+      <Logo />
+      <CardWrap>
         <div style={s.h2}>Pick a time</div>
         <p style={s.sub}>Choose a session slot that works for you.</p>
         {slots.length === 0 ? (
@@ -132,14 +158,14 @@ export default function PublicBooking() {
             {submitting ? 'Confirming…' : slots.length === 0 ? 'Submit without booking' : 'Confirm booking'}
           </button>
         </div>
-      </div>
+      </CardWrap>
     </div></div>
   )
 
   return (
     <div style={s.page}><div style={s.wrap}>
-      <div style={s.logo}>Interview<span style={s.accent}>OS</span></div>
-      <div style={s.card}>
+      <Logo />
+      <CardWrap>
         <div style={s.h2}>{data?.study?.name || 'Research session'}</div>
         <p style={s.sub}>{data?.study?.description || 'Complete this short form to register for a research session.'}</p>
 
@@ -162,7 +188,7 @@ export default function PublicBooking() {
                   {field.options?.map(o => {
                     const sel = (answers[field.id] || []).includes(o)
                     return (
-                      <button key={o} type="button" style={{padding:'5px 12px',borderRadius:20,fontSize:12.5,border:`1px solid ${sel?'#6366f1':'#d1d5db'}`,background:sel?'#eef2ff':'#fff',color:sel?'#6366f1':'#374151',cursor:'pointer'}}
+                      <button key={o} type="button" style={{padding:'5px 12px',borderRadius:20,fontSize:12.5,border:`1px solid ${sel?brandColor:'#d1d5db'}`,background:sel?`${brandColor}18`:'#fff',color:sel?brandColor:'#374151',cursor:'pointer'}}
                         onClick={() => {
                           const cur = answers[field.id] || []
                           setAnswers(a=>({...a,[field.id]: sel ? cur.filter(x=>x!==o) : [...cur,o]}))
@@ -173,12 +199,12 @@ export default function PublicBooking() {
                   })}
                 </div>
               ) : field.type === 'nps' ? (
-                <div style={{display:'flex',gap:4}}>
+                <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                   {Array.from({length:11},(_,i)=>i).map(n => {
                     const sel = answers[field.id] === n
                     return (
                       <button key={n} type="button"
-                        style={{width:36,height:36,borderRadius:6,fontSize:13,border:`1px solid ${sel?'#6366f1':'#d1d5db'}`,background:sel?'#6366f1':'#fff',color:sel?'#fff':'#374151',cursor:'pointer'}}
+                        style={{width:36,height:36,borderRadius:6,fontSize:13,border:`1px solid ${sel?brandColor:'#d1d5db'}`,background:sel?brandColor:'#fff',color:sel?'#fff':'#374151',cursor:'pointer'}}
                         onClick={() => setAnswers(a=>({...a,[field.id]:n}))}>
                         {n}
                       </button>
@@ -196,7 +222,7 @@ export default function PublicBooking() {
 
         {error && <div style={s.err}>{error}</div>}
         <button style={s.btn} onClick={handleFormSubmit}>Continue →</button>
-      </div>
+      </CardWrap>
     </div></div>
   )
 }
