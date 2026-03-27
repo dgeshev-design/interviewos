@@ -12,7 +12,7 @@ export function useSlots(studyId = null) {
     setLoading(true)
     let q = supabase.from('slots').select('*, participants(name,email,status)')
       .eq('workspace_id', workspace.id)
-      .gte('starts_at', new Date(Date.now() - 86400000).toISOString())
+      .gte('starts_at', new Date(Date.now() - 14 * 86400000).toISOString())
       .order('starts_at', { ascending: true })
     if (studyId) q = q.eq('study_id', studyId)
     const { data } = await q

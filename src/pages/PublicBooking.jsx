@@ -14,7 +14,7 @@ export default function PublicBooking() {
   const [error, setError]       = useState('')
 
   useEffect(() => {
-    fetch(`/api/get-public-study?slug=${studySlug}`)
+    fetch(`/api/public?action=get-study&slug=${studySlug}`)
       .then(r => r.json())
       .then(d => { if (d.error) setError(d.error); else setData(d); setLoading(false) })
       .catch(() => { setError('Failed to load. Please try again.'); setLoading(false) })

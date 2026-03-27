@@ -2,17 +2,18 @@ import { useState, useEffect } from 'react'
 import { useApp } from '@/context/AppContext'
 import { useTemplates } from '@/hooks/useTemplates'
 import { supabase } from '@/lib/supabase'
-import { saveGoogleToken } from '@/lib/api'
+import { saveGoogleToken, sendEmail, sendWhatsApp, sendSMS } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import TemplateModal from '@/components/comms/TemplateModal'
-import { TRIGGER_LABELS } from '@/lib/utils'
+import { TRIGGER_LABELS, applyTemplateVars } from '@/lib/utils'
 import PageHeader from '@/components/layout/PageHeader'
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Trash2, Check, ExternalLink, Calendar, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Check, Calendar, AlertCircle, Send } from 'lucide-react'
 
 const CHANNEL_COLORS = { email: 'blue', whatsapp: 'success', sms: 'secondary' }
 
@@ -28,6 +29,13 @@ export default function Settings() {
   const [gcalStatus, setGcalStatus]         = useState(null) // null | 'connected' | 'missing'
   const [gcalEmail, setGcalEmail]           = useState('')
   const [connectingCal, setConnectingCal]   = useState(false)
+
+  // Send-test state
+  const [testTemplate, setTestTemplate]     = useState(null) // template being tested
+  const [participants, setParticipants]     = useState([])
+  const [participantSearch, setParticipantSearch] = useState('')
+  const [testParticipant, setTestParticipant] = useState(null)
+  const [sending, setSending]               = useState(false)
 
   // Check if Google Calendar token exists; also save token if returning from OAuth redirect
   useEffect(() => {
@@ -89,6 +97,35 @@ export default function Settings() {
     toast({ title: 'Disconnected', variant: 'success' })
   }
 
+  const openTestSend = async (t) => {
+    setTestTemplate(t)
+    setTestParticipant(null)
+    setParticipantSearch('')
+    if (!participants.length) {
+      const { data } = await supabase.from('participants').select('id,name,email,phone').eq('workspace_id', workspace.id).order('name').limit(200)
+      setParticipants(data || [])
+    }
+  }
+
+  const handleTestSend = async () => {
+    if (!testTemplate || !testParticipant) return
+    setSending(true)
+    try {
+      const body = applyTemplateVars(testTemplate.body, testParticipant, null)
+      const subject = applyTemplateVars(testTemplate.subject || '', testParticipant, null)
+      let result
+      if      (testTemplate.channel === 'email')    result = await sendEmail({ to: testParticipant.email, subject, body, isHtml: testTemplate.is_html })
+      else if (testTemplate.channel === 'whatsapp') result = await sendWhatsApp({ to: testParticipant.phone, body })
+      else if (testTemplate.channel === 'sms')      result = await sendSMS({ to: testParticipant.phone, body })
+      if (result?.error) throw new Error(result.error)
+      toast({ title: 'Test sent', description: `${testTemplate.channel} sent to ${testParticipant.name}`, variant: 'success' })
+      setTestTemplate(null)
+    } catch (e) {
+      toast({ title: 'Send failed', description: e.message, variant: 'destructive' })
+    }
+    setSending(false)
+  }
+
   const handleSaveTemplate = async (form) => {
     if (editingTemplate?.id) await update(editingTemplate.id, form)
     else await add(form)
@@ -96,7 +133,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="py-8 max-w-3xl">
+    <div className="p-8 max-w-3xl">
       <PageHeader title="Settings" description="Manage your workspace, integrations and message templates" />
 
       {/* Workspace */}
@@ -210,6 +247,9 @@ export default function Settings() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => openTestSend(t)}>
+                      <Send className="h-3 w-3" /> Test
+                    </Button>
                     <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditingTemplate(t); setShowTemplate(true) }}>Edit</Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => { if (confirm('Delete?')) remove(t.id) }}>
                       <Trash2 className="h-3.5 w-3.5" />
@@ -230,6 +270,53 @@ export default function Settings() {
           initial={editingTemplate}
         />
       )}
+
+      {/* Send test dialog */}
+      <Dialog open={!!testTemplate} onOpenChange={v => { if (!v) setTestTemplate(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send test — {testTemplate?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Search participant</Label>
+              <Input
+                placeholder="Name or email…"
+                value={participantSearch}
+                onChange={e => { setParticipantSearch(e.target.value); setTestParticipant(null) }}
+              />
+              {participantSearch.length > 1 && (
+                <div className="border rounded-md max-h-40 overflow-y-auto divide-y">
+                  {participants
+                    .filter(p => p.name?.toLowerCase().includes(participantSearch.toLowerCase()) || p.email?.toLowerCase().includes(participantSearch.toLowerCase()))
+                    .slice(0, 8)
+                    .map(p => (
+                      <button key={p.id} className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/40 transition-colors ${testParticipant?.id === p.id ? 'bg-muted/60' : ''}`}
+                        onClick={() => { setTestParticipant(p); setParticipantSearch(p.name) }}>
+                        <div className="font-medium">{p.name}</div>
+                        <div className="text-xs text-muted-foreground">{p.email || p.phone}</div>
+                      </button>
+                    ))}
+                </div>
+              )}
+              {testParticipant && (
+                <p className="text-xs text-green-600">Sending to: {testParticipant.name} ({testTemplate?.channel === 'email' ? testParticipant.email : testParticipant.phone})</p>
+              )}
+            </div>
+            {testTemplate && testParticipant && (
+              <div className="rounded-md border bg-muted/30 p-3 text-xs whitespace-pre-wrap max-h-32 overflow-y-auto text-muted-foreground">
+                {applyTemplateVars(testTemplate.body, testParticipant, null)}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTestTemplate(null)}>Cancel</Button>
+            <Button onClick={handleTestSend} disabled={!testParticipant || sending}>
+              {sending ? 'Sending…' : `Send via ${testTemplate?.channel}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

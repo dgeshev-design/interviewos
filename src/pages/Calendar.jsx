@@ -110,7 +110,7 @@ export default function Calendar() {
   }
 
   return (
-    <div className="py-8">
+    <div className="p-8 max-w-6xl">
       <PageHeader
         title="Calendar"
         description="Manage your availability and upcoming sessions"
@@ -212,7 +212,7 @@ export default function Calendar() {
         <Card className="shadow-none">
           <CardContent className="p-0">
             {loading ? <p className="text-sm text-muted-foreground p-6">Loading…</p> :
-             slots.filter(s => !s.is_gcal_block).length === 0 ? (
+             slots.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-sm text-muted-foreground mb-3">No slots yet.</p>
                 <Button size="sm" onClick={() => setShowWindow(true)}>
@@ -225,13 +225,13 @@ export default function Calendar() {
                   <tr className="border-b">
                     <th className="text-left p-4 text-xs font-medium text-muted-foreground">Date & time</th>
                     <th className="text-left p-4 text-xs font-medium text-muted-foreground">Duration</th>
-                    <th className="text-left p-4 text-xs font-medium text-muted-foreground">Participant</th>
+                    <th className="text-left p-4 text-xs font-medium text-muted-foreground">Participant / source</th>
                     <th className="text-left p-4 text-xs font-medium text-muted-foreground">Status</th>
                     <th className="p-4" />
                   </tr>
                 </thead>
                 <tbody>
-                  {slots.filter(s => !s.is_gcal_block).map(s => (
+                  {slots.map(s => (
                     <tr key={s.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="p-4">
                         <div className="font-medium">{format(parseISO(s.starts_at), 'EEE, MMM d')}</div>
@@ -239,7 +239,9 @@ export default function Calendar() {
                       </td>
                       <td className="p-4 text-muted-foreground">{s.duration_minutes} min</td>
                       <td className="p-4">
-                        {s.participant_id
+                        {s.is_gcal_block
+                          ? <span className="text-xs text-gray-400 italic">Google Calendar</span>
+                          : s.participant_id
                           ? <button className="text-brand-600 hover:underline font-medium" onClick={() => navigate(`/studies/${s.study_id}/participants/${s.participant_id}`)}>
                               {s.participants?.name || 'Unknown'}
                             </button>
@@ -247,12 +249,14 @@ export default function Calendar() {
                       </td>
                       <td className="p-4">
                         <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border',
-                          s.available ? 'bg-green-100 text-green-700 border-green-200' : 'bg-blue-100 text-blue-700 border-blue-200')}>
-                          {s.available ? 'Available' : 'Booked'}
+                          s.is_gcal_block ? 'bg-gray-100 text-gray-500 border-gray-200'
+                          : s.available ? 'bg-green-100 text-green-700 border-green-200'
+                          : 'bg-blue-100 text-blue-700 border-blue-200')}>
+                          {s.is_gcal_block ? 'Busy' : s.available ? 'Available' : 'Booked'}
                         </span>
                       </td>
                       <td className="p-4">
-                        {s.available && (
+                        {s.available && !s.is_gcal_block && (
                           <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-destructive" onClick={() => removeSlot(s.id)}>
                             Remove
                           </Button>
