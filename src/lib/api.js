@@ -18,6 +18,7 @@ export const sendSMS      = (data) => post('/api/comms', { action: 'sms',       
 
 export const syncGCal        = (data) => post('/api/calendar?action=sync',       data)
 export const createCalEvent  = (data) => post('/api/calendar?action=create',     data)
+export const cancelCalEvent  = (data) => post('/api/calendar?action=cancel',     data)
 export const generateSlots   = (data) => post('/api/calendar?action=generate',   data)
 export const saveGoogleToken = (data) => post('/api/calendar?action=save-token', data)
 

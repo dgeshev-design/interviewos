@@ -101,10 +101,11 @@ export default async function handler(req, res) {
             const calData = await cr.json()
             if (cr.ok) {
               meetLink = calData.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri || ''
-              if (meetLink) {
-                await fetch(`${SB_URL}/rest/v1/participants?id=eq.${participant.id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ meet_link: meetLink }) })
-                await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slotId}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ meet_link: meetLink }) })
-              }
+              const gcalEventId = calData.id || ''
+              const slotPatch = { gcal_event_id: gcalEventId }
+              if (meetLink) slotPatch.meet_link = meetLink
+              await fetch(`${SB_URL}/rest/v1/participants?id=eq.${participant.id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ meet_link: meetLink }) })
+              await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slotId}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify(slotPatch) })
             }
           }
         } catch {}

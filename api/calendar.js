@@ -70,11 +70,27 @@ export default async function handler(req, res) {
         return res.status(gr.status).json({ error: err.error?.message || 'Google Calendar API error' })
       }
       const events = (await gr.json()).items || []
+
+      // ── Detect booking cancellations from Google Calendar ────────────────
+      // Find InterviewOS booked slots (not gcal blocks) that have a gcal_event_id
+      const bookedSlotsR = await fetch(`${SB_URL}/rest/v1/slots?workspace_id=eq.${workspaceId}&is_gcal_block=eq.false&available=eq.false&gcal_event_id=not.is.null&select=id,gcal_event_id,participant_id`, { headers: hdrs })
+      const bookedSlots  = await bookedSlotsR.json()
+      const cancelledEventIds = new Set(events.filter(e => e.status === 'cancelled').map(e => e.id))
+      const activeEventIds    = new Set(events.filter(e => e.status !== 'cancelled').map(e => e.id))
+      for (const slot of (bookedSlots || [])) {
+        // Event was explicitly cancelled OR is missing from the future window entirely
+        const wasCancelled = cancelledEventIds.has(slot.gcal_event_id) || (!activeEventIds.has(slot.gcal_event_id))
+        if (wasCancelled && slot.participant_id) {
+          await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slot.id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ available: true, participant_id: null, meet_link: '', gcal_event_id: null }) })
+          await fetch(`${SB_URL}/rest/v1/participants?id=eq.${slot.participant_id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ status: 'cancelled' }) })
+        }
+      }
+
+      // ── Rebuild gcal busy blocks ─────────────────────────────────────────
       await fetch(`${SB_URL}/rest/v1/slots?workspace_id=eq.${workspaceId}&is_gcal_block=eq.true`, { method: 'DELETE', headers: hdrs })
       const blocks = events
         .filter(e => (e.start?.dateTime || e.start?.date) && e.status !== 'cancelled' && !e.description?.includes('InterviewOS session'))
         .map(e => {
-          // All-day event: e.start.date = "YYYY-MM-DD", no dateTime
           const isAllDay = !e.start.dateTime
           const starts_at = isAllDay ? `${e.start.date}T00:00:00Z` : e.start.dateTime
           const ends_at   = isAllDay ? `${e.end.date}T00:00:00Z`   : e.end.dateTime
@@ -106,6 +122,26 @@ export default async function handler(req, res) {
       if (!cr.ok) return res.status(cr.status).json({ error: calData.error?.message })
       const meetLink = calData.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri || ''
       return res.status(200).json({ success: true, meetLink, eventId: calData.id })
+    } catch (e) { return res.status(500).json({ error: e.message }) }
+  }
+
+  // ── cancel event ────────────────────────────────────────────────────────
+  if (action === 'cancel') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+    const { workspaceId, eventId } = req.body
+    if (!workspaceId || !eventId) return res.status(400).json({ error: 'Missing fields' })
+    try {
+      const token = await getToken(workspaceId, SB_URL, hdrs)
+      const dr = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token.access_token}` },
+      })
+      // 204 = success, 410 = already deleted — both are fine
+      if (!dr.ok && dr.status !== 410) {
+        const err = await dr.json().catch(() => ({}))
+        return res.status(dr.status).json({ error: err.error?.message || 'Failed to delete calendar event' })
+      }
+      return res.status(200).json({ success: true })
     } catch (e) { return res.status(500).json({ error: e.message }) }
   }
 

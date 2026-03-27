@@ -6,7 +6,7 @@ import { useSendLog } from '@/hooks/useSendLog'
 import { useTemplates } from '@/hooks/useTemplates'
 import { useStudies } from '@/hooks/useStudies'
 import { useApp } from '@/context/AppContext'
-import { sendEmail, sendWhatsApp } from '@/lib/api'
+import { sendEmail, sendWhatsApp, cancelCalEvent } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { applyTemplateVars, formatDateTime, formatDate, TRIGGER_LABELS, cn } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -23,7 +23,7 @@ import SendCommsModal from '@/components/comms/SendCommsModal'
 import { useToast } from '@/hooks/use-toast'
 import {
   ArrowLeft, Star, Tag, Plus, X, Upload, FileText, Image, Video,
-  File, Trash2, Send, Gift, Mail, MessageCircle, ExternalLink, Quote, Check
+  File, Trash2, Send, Gift, Mail, MessageCircle, ExternalLink, Quote, Check, XCircle
 } from 'lucide-react'
 
 const FILE_ICONS = { video: Video, image: Image, document: FileText, transcript: File }
@@ -54,6 +54,7 @@ export default function ParticipantProfile() {
   const [prizeCode, setPrizeCode]     = useState('')
   const [sendingPrize, setSendingPrize] = useState(false)
   const [fileUrls, setFileUrls]       = useState({})
+  const [cancelling, setCancelling]   = useState(false)
 
   useEffect(() => {
     if (participant && !form) setForm({ ...participant })
@@ -72,6 +73,36 @@ export default function ParticipantProfile() {
   const save = async () => {
     try { await update(participantId, form); setEditing(false); toast({ title: 'Saved', variant: 'success' }) }
     catch (e) { toast({ title: 'Error', description: e.message, variant: 'destructive' }) }
+  }
+
+  const handleCancel = async () => {
+    if (!confirm('Cancel this booking? The Google Calendar event will be deleted and the slot freed up.')) return
+    setCancelling(true)
+    try {
+      // Find the slot booked by this participant
+      const { data: slotRows } = await supabase
+        .from('slots')
+        .select('id, gcal_event_id')
+        .eq('participant_id', participantId)
+        .maybeSingle()
+
+      // Free up the slot
+      if (slotRows) {
+        await supabase.from('slots').update({ available: true, participant_id: null, meet_link: '' }).eq('id', slotRows.id)
+        // Delete the GCal event
+        if (slotRows.gcal_event_id) {
+          await cancelCalEvent({ workspaceId: workspace.id, eventId: slotRows.gcal_event_id })
+        }
+      }
+
+      // Mark participant cancelled
+      await update(participantId, { status: 'cancelled' })
+      setForm(f => ({ ...f, status: 'cancelled' }))
+      toast({ title: 'Booking cancelled', description: 'Slot freed and calendar event removed.', variant: 'success' })
+    } catch (e) {
+      toast({ title: 'Failed to cancel', description: e.message, variant: 'destructive' })
+    }
+    setCancelling(false)
   }
 
   const setRating = (r) => {
@@ -173,6 +204,11 @@ export default function ParticipantProfile() {
               <Button variant="outline" size="sm" className="gap-1.5"><ExternalLink className="h-3.5 w-3.5" /> Join call</Button>
             </a>
           )}
+          {form.status === 'booked' && (
+            <Button variant="outline" size="sm" className="gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200" onClick={handleCancel} disabled={cancelling}>
+              <XCircle className="h-3.5 w-3.5" /> {cancelling ? 'Cancelling…' : 'Cancel booking'}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={() => setShowSend(true)} className="gap-1.5">
             <Send className="h-3.5 w-3.5" /> Send message
           </Button>
@@ -217,7 +253,7 @@ export default function ParticipantProfile() {
                         <Select value={form.status} onValueChange={v => setForm(f=>({...f,status:v}))}>
                           <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {['booked','completed','no-show','disqualified','prize-granted'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            {['booked','completed','no-show','disqualified','prize-granted','cancelled'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
