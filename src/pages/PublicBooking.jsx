@@ -251,8 +251,11 @@ export default function PublicBooking() {
           {/* Time slots for selected day */}
           {selectedDate && daySlots.length > 0 && (
             <>
-              <div style={{ fontWeight:600, fontSize:14, marginBottom:14, color:'#374151', textAlign:'center' }}>
+              <div style={{ fontWeight:600, fontSize:14, marginBottom:4, color:'#374151', textAlign:'center' }}>
                 {format(selectedDate,'EEEE')} · {format(selectedDate,'MMMM yyyy')} · {duration} min
+              </div>
+              <div style={{ fontSize:11, color:'#9ca3af', textAlign:'center', marginBottom:14 }}>
+                {(() => { const off = -new Date().getTimezoneOffset() / 60; return `All times in your local timezone (UTC${off >= 0 ? '+' : ''}${off})` })()}
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))', gap: 10, marginBottom: 20 }}>
                 {daySlots.map(slot => {

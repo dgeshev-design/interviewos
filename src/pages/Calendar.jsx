@@ -95,6 +95,7 @@ export default function Calendar() {
         durationMinutes: dur,
         bufferMinutes:   buf,
         daysOfWeek:      windowForm.daysOfWeek,
+        timezoneOffset:  new Date().getTimezoneOffset(),
       }
       const res = await generateSlots(payload)
       if (res.error) throw new Error(res.error)
@@ -150,6 +151,9 @@ export default function Calendar() {
             <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}>
               Today
             </Button>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {(() => { const off = -new Date().getTimezoneOffset() / 60; return `Your time (UTC${off >= 0 ? '+' : ''}${off})` })()}
+            </span>
           </div>
 
           <Card className="shadow-none overflow-hidden">
@@ -188,7 +192,7 @@ export default function Calendar() {
                             >
                               {slot.is_gcal_block ? '● Busy' :
                                slot.available     ? `${format(parseISO(slot.starts_at), 'HH:mm')} open` :
-                               slot.participants?.name || 'Booked'}
+                               `${format(parseISO(slot.starts_at), 'HH:mm')} ${slot.participants?.name || 'Booked'}`}
                             </div>
                           ))}
                         </div>

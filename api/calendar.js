@@ -148,22 +148,30 @@ export default async function handler(req, res) {
   // ── generate slots ──────────────────────────────────────────────────────
   if (action === 'generate') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { workspaceId, studyId, dateFrom, dateTo, timeFrom, timeTo, durationMinutes, bufferMinutes, daysOfWeek } = req.body
+    const { workspaceId, studyId, dateFrom, dateTo, timeFrom, timeTo, durationMinutes, bufferMinutes, daysOfWeek, timezoneOffset } = req.body
     if (!workspaceId || !dateFrom || !dateTo) return res.status(400).json({ error: 'Missing fields' })
     try {
       const dur = parseInt(durationMinutes, 10) || 60
       const buf = parseInt(bufferMinutes, 10) || 0
       const step = dur + buf
       const allowed = daysOfWeek || [1,2,3,4,5]
+      // Convert local time input to UTC using browser's timezone offset
+      // getTimezoneOffset() = UTC - local in minutes (e.g. UTC+3 → -180)
+      // UTC = local + timezoneOffset (in minutes)
+      const tzOff = parseInt(timezoneOffset || 0, 10)
+      const [fH, fM] = (timeFrom || '09:00').split(':').map(Number)
+      const [tH, tM] = (timeTo   || '17:00').split(':').map(Number)
+      const fromUTCMin = ((fH * 60 + fM + tzOff) % 1440 + 1440) % 1440
+      const toUTCMin   = ((tH * 60 + tM + tzOff) % 1440 + 1440) % 1440
+      const fromUTCH = Math.floor(fromUTCMin / 60), fromUTCM = fromUTCMin % 60
+      const toUTCH   = Math.floor(toUTCMin   / 60), toUTCM   = toUTCMin   % 60
       const slots = []
       const cur = new Date(`${dateFrom}T00:00:00Z`)
       const end = new Date(`${dateTo}T23:59:59Z`)
       while (cur <= end) {
         if (allowed.includes(cur.getUTCDay())) {
-          const [fH, fM] = (timeFrom || '09:00').split(':').map(Number)
-          const [tH, tM] = (timeTo   || '17:00').split(':').map(Number)
-          const dayStart = new Date(cur); dayStart.setUTCHours(fH, fM, 0, 0)
-          const dayEnd   = new Date(cur); dayEnd.setUTCHours(tH, tM, 0, 0)
+          const dayStart = new Date(cur); dayStart.setUTCHours(fromUTCH, fromUTCM, 0, 0)
+          const dayEnd   = new Date(cur); dayEnd.setUTCHours(toUTCH, toUTCM, 0, 0)
           let s = new Date(dayStart)
           while (s.getTime() + dur * 60000 <= dayEnd.getTime()) {
             slots.push({ workspace_id: workspaceId, study_id: studyId || null, starts_at: s.toISOString(), ends_at: new Date(s.getTime() + dur * 60000).toISOString(), duration_minutes: dur, available: true, is_gcal_block: false, meet_link: '' })
