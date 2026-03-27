@@ -48,5 +48,10 @@ export function useSlots(studyId = null) {
     setSlots(prev => prev.filter(s => s.id !== id))
   }
 
-  return { slots, loading, refetch: fetch, addSlot, updateSlot, removeSlot }
+  const removeSlots = async (ids) => {
+    await supabase.from('slots').delete().in('id', ids)
+    setSlots(prev => prev.filter(s => !ids.includes(s.id)))
+  }
+
+  return { slots, loading, refetch: fetch, addSlot, updateSlot, removeSlot, removeSlots }
 }

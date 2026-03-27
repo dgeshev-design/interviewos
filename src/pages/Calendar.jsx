@@ -21,7 +21,7 @@ const DAYS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
 export default function Calendar() {
   const { workspace } = useApp()
-  const { slots, loading, removeSlot, refetch } = useSlots()
+  const { slots, loading, removeSlot, removeSlots, refetch } = useSlots()
   const { studies } = useStudies()
   const navigate    = useNavigate()
   const { toast }   = useToast()
@@ -32,6 +32,8 @@ export default function Calendar() {
   const [syncing, setSyncing]       = useState(false)
   const [generating, setGenerating] = useState(false)
   const [genResult, setGenResult]   = useState(null)
+  const [selected, setSelected]     = useState(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const [windowForm, setWindowForm] = useState({
     studyId: '__all__',
@@ -212,68 +214,125 @@ export default function Calendar() {
         </>
       )}
 
-      {view === 'list' && (
-        <Card className="shadow-none">
-          <CardContent className="p-0">
-            {loading ? <p className="text-sm text-muted-foreground p-6">Loading…</p> :
-             slots.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-sm text-muted-foreground mb-3">No slots yet.</p>
-                <Button size="sm" onClick={() => setShowWindow(true)}>
-                  <CalendarPlus className="h-4 w-4 mr-1.5" /> Set availability window
+      {view === 'list' && (() => {
+        const deletable = slots.filter(s => s.available && !s.is_gcal_block)
+        const allSelected = deletable.length > 0 && deletable.every(s => selected.has(s.id))
+        const toggleAll = () => {
+          if (allSelected) setSelected(new Set())
+          else setSelected(new Set(deletable.map(s => s.id)))
+        }
+        const toggle = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+        const handleBulkDelete = async () => {
+          if (!selected.size) return
+          setBulkDeleting(true)
+          try { await removeSlots([...selected]); setSelected(new Set()) }
+          catch (e) { toast({ title: 'Delete failed', description: e.message, variant: 'destructive' }) }
+          setBulkDeleting(false)
+        }
+        const handleDeleteAll = async () => {
+          setBulkDeleting(true)
+          try { await removeSlots(deletable.map(s => s.id)); setSelected(new Set()) }
+          catch (e) { toast({ title: 'Delete failed', description: e.message, variant: 'destructive' }) }
+          setBulkDeleting(false)
+        }
+        return (
+          <Card className="shadow-none">
+            {selected.size > 0 && (
+              <div className="flex items-center gap-3 px-4 py-2.5 border-b bg-muted/40">
+                <span className="text-sm text-muted-foreground">{selected.size} selected</span>
+                <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={handleBulkDelete} disabled={bulkDeleting}>
+                  {bulkDeleting ? 'Deleting…' : `Delete ${selected.size} slot${selected.size > 1 ? 's' : ''}`}
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelected(new Set())}>Clear selection</Button>
+                {deletable.length > selected.size && (
+                  <Button size="sm" variant="ghost" className="h-7 text-xs ml-auto" onClick={handleDeleteAll} disabled={bulkDeleting}>
+                    Delete all {deletable.length} open slots
+                  </Button>
+                )}
+              </div>
+            )}
+            {selected.size === 0 && deletable.length > 0 && (
+              <div className="flex items-center justify-end px-4 py-2 border-b">
+                <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground hover:text-destructive" onClick={handleDeleteAll} disabled={bulkDeleting}>
+                  {bulkDeleting ? 'Deleting…' : `Delete all ${deletable.length} open slots`}
                 </Button>
               </div>
-             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-4 text-xs font-medium text-muted-foreground">Date & time</th>
-                    <th className="text-left p-4 text-xs font-medium text-muted-foreground">Duration</th>
-                    <th className="text-left p-4 text-xs font-medium text-muted-foreground">Participant / source</th>
-                    <th className="text-left p-4 text-xs font-medium text-muted-foreground">Status</th>
-                    <th className="p-4" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {slots.map(s => (
-                    <tr key={s.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="p-4">
-                        <div className="font-medium">{format(parseISO(s.starts_at), 'EEE, MMM d')}</div>
-                        <div className="text-xs text-muted-foreground">{format(parseISO(s.starts_at), 'HH:mm')} – {format(parseISO(s.ends_at), 'HH:mm')}</div>
-                      </td>
-                      <td className="p-4 text-muted-foreground">{s.duration_minutes} min</td>
-                      <td className="p-4">
-                        {s.is_gcal_block
-                          ? <span className="text-xs text-gray-400 italic">Google Calendar</span>
-                          : s.participant_id
-                          ? <button className="text-brand-600 hover:underline font-medium" onClick={() => navigate(`/studies/${s.study_id}/participants/${s.participant_id}`)}>
-                              {s.participants?.name || 'Unknown'}
-                            </button>
-                          : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="p-4">
-                        <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border',
-                          s.is_gcal_block ? 'bg-gray-100 text-gray-500 border-gray-200'
-                          : s.available ? 'bg-green-100 text-green-700 border-green-200'
-                          : 'bg-blue-100 text-blue-700 border-blue-200')}>
-                          {s.is_gcal_block ? 'Busy' : s.available ? 'Available' : 'Booked'}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        {s.available && !s.is_gcal_block && (
-                          <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-destructive" onClick={() => removeSlot(s.id)}>
-                            Remove
-                          </Button>
+            )}
+            <CardContent className="p-0">
+              {loading ? <p className="text-sm text-muted-foreground p-6">Loading…</p> :
+               slots.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-sm text-muted-foreground mb-3">No slots yet.</p>
+                  <Button size="sm" onClick={() => setShowWindow(true)}>
+                    <CalendarPlus className="h-4 w-4 mr-1.5" /> Set availability window
+                  </Button>
+                </div>
+               ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="p-4 w-8">
+                        {deletable.length > 0 && (
+                          <input type="checkbox" className="rounded" checked={allSelected} onChange={toggleAll} />
                         )}
-                      </td>
+                      </th>
+                      <th className="text-left p-4 text-xs font-medium text-muted-foreground">Date & time</th>
+                      <th className="text-left p-4 text-xs font-medium text-muted-foreground">Duration</th>
+                      <th className="text-left p-4 text-xs font-medium text-muted-foreground">Participant / source</th>
+                      <th className="text-left p-4 text-xs font-medium text-muted-foreground">Status</th>
+                      <th className="p-4" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-             )}
-          </CardContent>
-        </Card>
-      )}
+                  </thead>
+                  <tbody>
+                    {slots.map(s => {
+                      const canSelect = s.available && !s.is_gcal_block
+                      const isSelected = selected.has(s.id)
+                      return (
+                        <tr key={s.id} className={cn('border-b last:border-0 transition-colors', isSelected ? 'bg-muted/50' : 'hover:bg-muted/30')}>
+                          <td className="p-4 w-8">
+                            {canSelect && (
+                              <input type="checkbox" className="rounded" checked={isSelected} onChange={() => toggle(s.id)} />
+                            )}
+                          </td>
+                          <td className="p-4">
+                            <div className="font-medium">{format(parseISO(s.starts_at), 'EEE, MMM d')}</div>
+                            <div className="text-xs text-muted-foreground">{format(parseISO(s.starts_at), 'HH:mm')} – {format(parseISO(s.ends_at), 'HH:mm')}</div>
+                          </td>
+                          <td className="p-4 text-muted-foreground">{s.duration_minutes} min</td>
+                          <td className="p-4">
+                            {s.is_gcal_block
+                              ? <span className="text-xs text-gray-400 italic">Google Calendar</span>
+                              : s.participant_id
+                              ? <button className="text-brand-600 hover:underline font-medium" onClick={() => navigate(`/studies/${s.study_id}/participants/${s.participant_id}`)}>
+                                  {s.participants?.name || 'Unknown'}
+                                </button>
+                              : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="p-4">
+                            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border',
+                              s.is_gcal_block ? 'bg-gray-100 text-gray-500 border-gray-200'
+                              : s.available ? 'bg-green-100 text-green-700 border-green-200'
+                              : 'bg-blue-100 text-blue-700 border-blue-200')}>
+                              {s.is_gcal_block ? 'Busy' : s.available ? 'Available' : 'Booked'}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            {canSelect && (
+                              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-destructive" onClick={() => removeSlot(s.id)}>
+                                Remove
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+               )}
+            </CardContent>
+          </Card>
+        )
+      })()}
 
       {/* Availability window modal */}
       <Dialog open={showWindow} onOpenChange={(v) => { try { setShowWindow(v); if (!v) setGenResult(null) } catch(e){} }}>
