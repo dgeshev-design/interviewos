@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import StatusBadge from '@/components/ui/status-badge'
-import RichTextEditor from '@/components/ui/rich-text-editor'
+import NotionEditor from '@/components/ui/notion-editor'
 import SendCommsModal from '@/components/comms/SendCommsModal'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -291,10 +291,11 @@ export default function ParticipantProfile() {
                 <CardHeader className="pb-3"><CardTitle className="text-sm">Session summary</CardTitle></CardHeader>
                 <CardContent>
                   {editing ? (
-                    <RichTextEditor value={form.summary||''} onChange={v => setForm(f=>({...f,summary:v}))} placeholder="Write a summary of this session…" />
+                    <NotionEditor value={form.summary||''} onChange={v => setForm(f=>({...f,summary:v}))} placeholder="Write a summary of this session…" />
                   ) : (
-                    <div className={cn('text-sm rich-text-content', !form.summary && 'text-muted-foreground')}
-                      dangerouslySetInnerHTML={{ __html: form.summary || 'No summary yet.' }} />
+                    form.summary
+                      ? <NotionEditor value={form.summary} readOnly />
+                      : <p className="text-sm text-muted-foreground">No summary yet.</p>
                   )}
                 </CardContent>
               </Card>
@@ -388,12 +389,11 @@ export default function ParticipantProfile() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <RichTextEditor
+                  <NotionEditor
                     value={form.notes||''}
                     onChange={v => setForm(f=>({...f,notes:v}))}
                     placeholder="Take notes during or after the session. Select any text to add it as a quote."
                     onTextSelect={setSelectedText}
-                    className="min-h-[300px]"
                   />
                   {(form.notes !== participant?.notes) && (
                     <Button size="sm" className="mt-3" onClick={save}>Save notes</Button>
