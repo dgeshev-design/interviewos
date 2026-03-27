@@ -7,8 +7,8 @@ import Blockquote from '@yoopta/blockquote'
 import Code from '@yoopta/code'
 import Link from '@yoopta/link'
 import { Bold, Italic, CodeMark, Underline, Strike, Highlight } from '@yoopta/marks'
-import { Toolbar, DefaultToolbarRender } from '@yoopta/toolbar'
-import { ActionMenuList, DefaultActionMenuRender } from '@yoopta/action-menu-list'
+import Toolbar, { DefaultToolbarRender } from '@yoopta/toolbar'
+import ActionMenuList, { DefaultActionMenuRender } from '@yoopta/action-menu-list'
 
 const PLUGINS = [
   Paragraph,
