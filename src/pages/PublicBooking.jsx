@@ -43,7 +43,18 @@ export default function PublicBooking() {
     if (step === 'book' && !calendarDate) {
       const firstSlot = (data?.slots || [])[0]
       setCalendarDate(firstSlot ? parseISO(firstSlot.starts_at) : new Date())
-      setSelectedDate(new Date())
+      // Select today if it has slots, otherwise the first day that does
+      const today = new Date()
+      const allSlots = data?.slots || []
+      const hasToday = allSlots.some(s => isSameDay(parseISO(s.starts_at), today))
+      if (hasToday) {
+        setSelectedDate(today)
+      } else {
+        const firstWithSlots = allSlots.find(s => parseISO(s.starts_at) >= today)
+        const firstDate = firstWithSlots ? parseISO(firstWithSlots.starts_at) : today
+        setSelectedDate(firstDate)
+        setCalendarDate(firstDate)
+      }
     }
   }, [step])
 
@@ -377,7 +388,17 @@ export default function PublicBooking() {
                   </div>
                 )
               })() : (
-                <input type={field.type||'text'} style={s.input} value={answers[field.id]||''} onChange={e => setAnswers(a=>({...a,[field.id]:e.target.value}))} />
+                <input
+                  type={field.type||'text'}
+                  inputMode={field.type === 'number' ? 'numeric' : undefined}
+                  pattern={field.type === 'number' ? '[0-9]*' : undefined}
+                  style={s.input}
+                  value={answers[field.id]||''}
+                  onChange={e => {
+                    const val = field.type === 'number' ? e.target.value.replace(/[^0-9]/g, '') : e.target.value
+                    setAnswers(a=>({...a,[field.id]:val}))
+                  }}
+                />
               )}
             </div>
           )
