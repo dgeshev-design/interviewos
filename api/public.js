@@ -62,21 +62,44 @@ export default async function handler(req, res) {
         await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slotId}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ available: false, participant_id: participant.id }) })
       }
 
-      // Try to create calendar event + get meet link
+      // Try to create calendar event + get meet link (inline — no self-referencing HTTP)
       let meetLink = ''
-      try {
-        const host = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
-        const calR = await fetch(`${host}/api/calendar?action=create`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ workspaceId: study.workspace_id, participantName: name, participantEmail: email, startsAt: slot?.starts_at, durationMinutes: slot?.duration_minutes || 60, title: `Research Interview — ${name}` }),
-        })
-        const calData = await calR.json()
-        if (calData.meetLink) {
-          meetLink = calData.meetLink
-          await fetch(`${SB_URL}/rest/v1/participants?id=eq.${participant.id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ meet_link: meetLink }) })
-          if (slotId) await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slotId}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ meet_link: meetLink }) })
-        }
-      } catch {}
+      if (slot) {
+        try {
+          // Fetch google token
+          const tokR = await fetch(`${SB_URL}/rest/v1/google_tokens?workspace_id=eq.${study.workspace_id}&select=*`, { headers: hdrs })
+          const tokens = await tokR.json()
+          if (tokens.length) {
+            let { access_token, refresh_token: rt, expiry } = tokens[0]
+            if (expiry && new Date(expiry).getTime() - Date.now() < 300000 && rt) {
+              const rr = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, refresh_token: rt, grant_type: 'refresh_token' }).toString() })
+              const refreshed = await rr.json()
+              if (!refreshed.error) {
+                access_token = refreshed.access_token
+                await fetch(`${SB_URL}/rest/v1/google_tokens?workspace_id=eq.${study.workspace_id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ access_token, expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(), updated_at: new Date().toISOString() }) })
+              }
+            }
+            const gcalEmail = tokens[0].email
+            const start = new Date(slot.starts_at)
+            const end   = new Date(start.getTime() + (slot.duration_minutes || 60) * 60000)
+            const attendees = [{ email: gcalEmail }]
+            if (email) attendees.push({ email, displayName: name })
+            const cr = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${access_token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ summary: `Research Interview — ${name}`, description: `InterviewOS session\nParticipant: ${name}\nEmail: ${email}`, start: { dateTime: start.toISOString(), timeZone: 'UTC' }, end: { dateTime: end.toISOString(), timeZone: 'UTC' }, attendees, conferenceData: { createRequest: { requestId: `ios-${Date.now()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } } }, reminders: { useDefault: false, overrides: [{ method: 'email', minutes: 1440 }, { method: 'popup', minutes: 30 }] } }),
+            })
+            const calData = await cr.json()
+            if (cr.ok) {
+              meetLink = calData.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri || ''
+              if (meetLink) {
+                await fetch(`${SB_URL}/rest/v1/participants?id=eq.${participant.id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ meet_link: meetLink }) })
+                await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slotId}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ meet_link: meetLink }) })
+              }
+            }
+          }
+        } catch {}
+      }
 
       // Fire booking_confirmed templates
       const tmplR = await fetch(`${SB_URL}/rest/v1/templates?workspace_id=eq.${study.workspace_id}&trigger_type=eq.booking_confirmed&is_active=eq.true`, { headers: hdrs })

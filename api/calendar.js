@@ -71,8 +71,16 @@ export default async function handler(req, res) {
       }
       const events = (await gr.json()).items || []
       await fetch(`${SB_URL}/rest/v1/slots?workspace_id=eq.${workspaceId}&is_gcal_block=eq.true`, { method: 'DELETE', headers: hdrs })
-      const blocks = events.filter(e => e.start?.dateTime && e.status !== 'cancelled' && !e.description?.includes('InterviewOS session'))
-        .map(e => ({ workspace_id: workspaceId, starts_at: e.start.dateTime, ends_at: e.end.dateTime, duration_minutes: Math.round((new Date(e.end.dateTime) - new Date(e.start.dateTime)) / 60000), available: false, is_gcal_block: true, gcal_event_id: e.id, meet_link: '', study_id: null }))
+      const blocks = events
+        .filter(e => (e.start?.dateTime || e.start?.date) && e.status !== 'cancelled' && !e.description?.includes('InterviewOS session'))
+        .map(e => {
+          // All-day event: e.start.date = "YYYY-MM-DD", no dateTime
+          const isAllDay = !e.start.dateTime
+          const starts_at = isAllDay ? `${e.start.date}T00:00:00Z` : e.start.dateTime
+          const ends_at   = isAllDay ? `${e.end.date}T00:00:00Z`   : e.end.dateTime
+          const duration_minutes = Math.round((new Date(ends_at) - new Date(starts_at)) / 60000)
+          return { workspace_id: workspaceId, starts_at, ends_at, duration_minutes, available: false, is_gcal_block: true, gcal_event_id: e.id, meet_link: '', study_id: null }
+        })
       if (blocks.length > 0) await fetch(`${SB_URL}/rest/v1/slots`, { method: 'POST', headers: { ...hdrs, 'Prefer': 'return=minimal' }, body: JSON.stringify(blocks) })
       return res.status(200).json({ success: true, synced: blocks.length })
     } catch (e) { return res.status(500).json({ error: e.message }) }

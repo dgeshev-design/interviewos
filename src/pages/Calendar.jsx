@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { addDays, startOfWeek, format, isSameDay, parseISO, isToday } from 'date-fns'
 import { ChevronLeft, ChevronRight, RefreshCw, CalendarPlus, List, LayoutGrid } from 'lucide-react'
 
-const HOURS = Array.from({ length: 13 }, (_, i) => i + 8)
+const HOURS = Array.from({ length: 16 }, (_, i) => i + 7)
 const DAYS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
 export default function Calendar() {
