@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useParticipants } from '@/hooks/useParticipants'
 import { useParticipantFiles } from '@/hooks/useParticipantFiles'
@@ -75,6 +75,15 @@ export default function ParticipantProfile() {
     catch (e) { toast({ title: 'Error', description: e.message, variant: 'destructive' }) }
   }
 
+  // Auto-save notes & quotes with debounce
+  const autoSaveTimer = useRef(null)
+  const autoSave = (patch) => {
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => {
+      update(participantId, patch).catch(() => {})
+    }, 800)
+  }
+
   const handleCancel = async () => {
     if (!confirm('Cancel this booking? The Google Calendar event will be deleted and the slot freed up.')) return
     setCancelling(true)
@@ -123,11 +132,19 @@ export default function ParticipantProfile() {
 
   const addQuote = (text) => {
     const q = { id: Date.now().toString(), text, tag: '', color: 'brand' }
-    setForm(f => ({ ...f, quotes: [...(f.quotes || []), q] }))
+    setForm(f => {
+      const quotes = [...(f.quotes || []), q]
+      autoSave({ quotes })
+      return { ...f, quotes }
+    })
     setNewQuote(''); setSelectedText('')
   }
 
-  const removeQuote = (id) => setForm(f => ({ ...f, quotes: f.quotes.filter(q => q.id !== id) }))
+  const removeQuote = (id) => setForm(f => {
+    const quotes = f.quotes.filter(q => q.id !== id)
+    autoSave({ quotes })
+    return { ...f, quotes }
+  })
 
   const handleUpload = async (e, fileType) => {
     const file = e.target.files?.[0]
@@ -391,13 +408,10 @@ export default function ParticipantProfile() {
                 <CardContent>
                   <NotionEditor
                     value={form.notes||''}
-                    onChange={v => setForm(f=>({...f,notes:v}))}
+                    onChange={v => { setForm(f=>({...f,notes:v})); autoSave({ notes: v }) }}
                     placeholder="Take notes during or after the session. Select any text to add it as a quote."
                     onTextSelect={setSelectedText}
                   />
-                  {(form.notes !== participant?.notes) && (
-                    <Button size="sm" className="mt-3" onClick={save}>Save notes</Button>
-                  )}
                 </CardContent>
               </Card>
             </div>
@@ -436,9 +450,6 @@ export default function ParticipantProfile() {
                       onKeyDown={e => { if (e.key === 'Enter' && newQuote.trim()) addQuote(newQuote) }}
                     />
                   </div>
-                  {(form.quotes !== participant?.quotes) && (
-                    <Button size="sm" className="mt-3 w-full" onClick={save}>Save quotes</Button>
-                  )}
                 </CardContent>
               </Card>
             </div>
