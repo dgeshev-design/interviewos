@@ -309,49 +309,10 @@ export default async function handler(req, res) {
       if (!studies.length) return res.status(404).json({ error: 'Report not found.' })
       const study = studies[0]
 
-      const [pr, cr] = await Promise.all([
-        fetch(`${SB_URL}/rest/v1/participants?study_id=eq.${study.id}&select=id,name,status,booked_at,summary,notes,quotes&order=created_at.asc`, { headers: hdrs }),
-        fetch(`${SB_URL}/rest/v1/report_comments?study_id=eq.${study.id}&select=*&order=created_at.asc`, { headers: hdrs }),
-      ])
+      const pr = await fetch(`${SB_URL}/rest/v1/participants?study_id=eq.${study.id}&select=id,name,status,booked_at,summary,quotes&order=created_at.asc`, { headers: hdrs })
       const participants = await pr.json()
-      const comments     = await cr.json()
 
-      // Attach participant name to each comment
-      const pMap = Object.fromEntries((participants || []).map(p => [p.id, p.name]))
-      const commentsWithNames = (comments || []).map(c => ({ ...c, participant_name: c.participant_id ? pMap[c.participant_id] : null }))
-
-      return res.status(200).json({ study, participants: participants || [], comments: commentsWithNames })
-    } catch (e) { return res.status(500).json({ error: e.message }) }
-  }
-
-  // ── add-comment ──────────────────────────────────────────────────────────
-  if (action === 'add-comment') {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { token, authorName, body, participantId, quote } = req.body
-    if (!token || !authorName || !body) return res.status(400).json({ error: 'Missing fields' })
-    try {
-      const sr = await fetch(`${SB_URL}/rest/v1/studies?report_token=eq.${encodeURIComponent(token)}&select=id,workspace_id`, { headers: hdrs })
-      const studies = await sr.json()
-      if (!studies.length) return res.status(404).json({ error: 'Report not found.' })
-      const { id: studyId, workspace_id } = studies[0]
-
-      const cr = await fetch(`${SB_URL}/rest/v1/report_comments`, {
-        method: 'POST',
-        headers: { ...hdrs, 'Prefer': 'return=representation' },
-        body: JSON.stringify({ study_id: studyId, workspace_id, author_name: authorName, body, participant_id: participantId || null, quote: quote || null }),
-      })
-      const d = await cr.json()
-      if (!cr.ok) return res.status(cr.status).json({ error: d.message })
-      const comment = Array.isArray(d) ? d[0] : d
-
-      // Attach participant name
-      let participant_name = null
-      if (participantId) {
-        const pR = await fetch(`${SB_URL}/rest/v1/participants?id=eq.${participantId}&select=name`, { headers: hdrs })
-        const ps = await pR.json()
-        participant_name = ps[0]?.name || null
-      }
-      return res.status(200).json({ ...comment, participant_name })
+      return res.status(200).json({ study, participants: participants || [] })
     } catch (e) { return res.status(500).json({ error: e.message }) }
   }
 
