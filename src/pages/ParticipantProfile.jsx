@@ -95,10 +95,9 @@ export default function ParticipantProfile() {
         .eq('participant_id', participantId)
         .maybeSingle()
 
-      // Free up the slot
+      // Remove the booked slot (dynamic model — available slots are computed, not stored)
       if (slotRows) {
-        await supabase.from('slots').update({ available: true, participant_id: null, meet_link: '' }).eq('id', slotRows.id)
-        // Delete the GCal event
+        await supabase.from('slots').delete().eq('id', slotRows.id)
         if (slotRows.gcal_event_id) {
           await cancelCalEvent({ workspaceId: workspace.id, eventId: slotRows.gcal_event_id })
         }

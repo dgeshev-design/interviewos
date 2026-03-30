@@ -81,7 +81,7 @@ export default async function handler(req, res) {
         // Event was explicitly cancelled OR is missing from the future window entirely
         const wasCancelled = cancelledEventIds.has(slot.gcal_event_id) || (!activeEventIds.has(slot.gcal_event_id))
         if (wasCancelled && slot.participant_id) {
-          await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slot.id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ available: true, participant_id: null, meet_link: '', gcal_event_id: null }) })
+          await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slot.id}`, { method: 'DELETE', headers: hdrs })
           await fetch(`${SB_URL}/rest/v1/participants?id=eq.${slot.participant_id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ status: 'cancelled' }) })
         }
       }
