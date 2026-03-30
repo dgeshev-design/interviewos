@@ -16,8 +16,10 @@ import { cn } from '@/lib/utils'
 import { addDays, addMonths, startOfWeek, endOfMonth, startOfMonth, format, isSameDay, parseISO, isToday } from 'date-fns'
 import { ChevronLeft, ChevronRight, RefreshCw, CalendarPlus, List, LayoutGrid, Trash2, Plus } from 'lucide-react'
 
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 7)
-const DAYS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const HOURS       = Array.from({ length: 16 }, (_, i) => i + 7) // 7–22
+const DAYS        = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+const HOUR_PX     = 56   // px per hour in week grid
+const GRID_START  = 7    // first hour shown
 
 const fmtDate = (d) => format(d, 'yyyy-MM-dd')
 
@@ -62,13 +64,7 @@ export default function Calendar() {
     return d >= weekStart && d < addDays(weekStart, 7)
   })
 
-  const getSlotForCell = (day, hour) =>
-    slotsInWeek.filter(s => {
-      const d = parseISO(s.starts_at)
-      return isSameDay(d, day) && d.getHours() === hour
-    })
-
-  const openSlots = slots.filter(s => s.available && !s.is_gcal_block)
+const openSlots = slots.filter(s => s.available && !s.is_gcal_block)
 
   const handleSync = async () => {
     setSyncing(true)
@@ -218,74 +214,97 @@ export default function Calendar() {
           <Card className="shadow-none overflow-hidden">
             <div className="overflow-auto">
               <div className="min-w-[700px]">
-                <div className="grid grid-cols-8 border-b">
-                  <div className="p-2 border-r" />
+                {/* Day header row */}
+                <div className="flex border-b">
+                  <div className="w-14 flex-shrink-0 border-r" />
                   {weekDays.map(day => (
-                    <div key={day.toISOString()} className={cn('p-2 text-center border-l', isToday(day) && 'bg-brand-50')}>
+                    <div key={day.toISOString()} className={cn('flex-1 p-2 text-center border-l', isToday(day) && 'bg-brand-50')}>
                       <div className="text-xs text-muted-foreground">{format(day, 'EEE')}</div>
                       <div className={cn('text-sm font-medium mt-0.5', isToday(day) && 'text-brand-600')}>{format(day, 'd')}</div>
                     </div>
                   ))}
                 </div>
-                {HOURS.map(hour => (
-                  <div key={hour} className="grid grid-cols-8 border-b last:border-0 min-h-[48px]">
-                    <div className="p-2 text-xs text-muted-foreground text-right pr-3 pt-1.5 border-r">
-                      {hour}:00
-                    </div>
-                    {weekDays.map(day => {
-                      const cellSlots = getSlotForCell(day, hour)
-                      const isEmpty   = cellSlots.length === 0
-                      return (
-                        <div
-                          key={day.toISOString()}
-                          onClick={() => {
-                            if (isEmpty) {
-                              setAddSlotCell({ day, hour })
+
+                {/* Time grid body */}
+                <div className="flex" style={{ height: HOURS.length * HOUR_PX }}>
+                  {/* Hour labels */}
+                  <div className="w-14 flex-shrink-0 relative border-r">
+                    {HOURS.map(h => (
+                      <div key={h} style={{ position: 'absolute', top: (h - GRID_START) * HOUR_PX, height: HOUR_PX }}
+                        className="w-full flex items-start justify-end pr-2 pt-1">
+                        <span className="text-xs text-muted-foreground">{h}:00</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Day columns */}
+                  {weekDays.map(day => {
+                    const daySlots = slotsInWeek.filter(s => isSameDay(parseISO(s.starts_at), day))
+                    return (
+                      <div key={day.toISOString()}
+                        className={cn('flex-1 relative border-l', isToday(day) && 'bg-brand-50/30')}
+                        style={{ height: HOURS.length * HOUR_PX }}
+                      >
+                        {/* Hour grid lines + click targets */}
+                        {HOURS.map(h => (
+                          <div key={h}
+                            style={{ position: 'absolute', top: (h - GRID_START) * HOUR_PX, height: HOUR_PX, width: '100%' }}
+                            className="border-b border-border/50 hover:bg-muted/30 cursor-pointer group transition-colors"
+                            onClick={() => {
+                              setAddSlotCell({ day, hour: h })
                               setAddSlotDur(windowForm.durationMinutes || '60')
                               setAddSlotStudy('__all__')
                               setShowAddSlot(true)
-                            }
-                          }}
-                          className={cn(
-                            'border-l p-0.5 transition-colors',
-                            isToday(day) && 'bg-brand-50/30',
-                            isEmpty && 'hover:bg-muted/40 cursor-pointer group',
-                          )}
-                        >
-                          {isEmpty && (
+                            }}
+                          >
                             <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Plus className="h-3.5 w-3.5 text-muted-foreground/60" />
+                              <Plus className="h-3 w-3 text-muted-foreground/50" />
                             </div>
-                          )}
-                          {cellSlots.map(slot => (
+                          </div>
+                        ))}
+
+                        {/* Slots — absolutely positioned by time and sized by duration */}
+                        {daySlots.map(slot => {
+                          const d    = parseISO(slot.starts_at)
+                          const top  = (d.getHours() - GRID_START + d.getMinutes() / 60) * HOUR_PX
+                          const h    = Math.max((slot.duration_minutes / 60) * HOUR_PX - 2, 18)
+                          return (
                             <div
                               key={slot.id}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 if (slot.is_gcal_block) return
-                                if (slot.available) { removeSlot(slot.id) }
+                                if (slot.available) removeSlot(slot.id)
                                 else if (slot.participant_id) navigate(`/studies/${slot.study_id}/participants/${slot.participant_id}`)
                               }}
                               title={slot.available ? 'Click to remove' : undefined}
+                              style={{ position: 'absolute', top, height: h, left: 2, right: 2, zIndex: 1 }}
                               className={cn(
-                                'rounded px-1.5 py-1 text-xs mb-0.5 truncate',
+                                'rounded px-1.5 overflow-hidden text-xs flex flex-col justify-start pt-0.5',
                                 slot.is_gcal_block
-                                  ? 'bg-gray-100 text-gray-500 cursor-not-allowed border border-gray-200'
+                                  ? 'bg-gray-100 text-gray-500 cursor-default border border-gray-200'
                                   : slot.available
                                   ? 'bg-green-100 text-green-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 cursor-pointer border border-green-200'
                                   : 'bg-brand-100 text-brand-700 hover:bg-brand-200 cursor-pointer border border-brand-200'
                               )}
                             >
-                              {slot.is_gcal_block ? '● Busy' :
-                               slot.available     ? `${format(parseISO(slot.starts_at), 'HH:mm')} open` :
-                               `${format(parseISO(slot.starts_at), 'HH:mm')} ${slot.participants?.name || 'Booked'}`}
+                              <span className="font-medium leading-tight truncate">
+                                {slot.is_gcal_block ? '● Busy' :
+                                 slot.available     ? `${format(parseISO(slot.starts_at), 'HH:mm')} open` :
+                                 `${format(parseISO(slot.starts_at), 'HH:mm')} ${slot.participants?.name || 'Booked'}`}
+                              </span>
+                              {h >= 32 && (
+                                <span className="text-[10px] opacity-70 leading-tight">
+                                  {slot.duration_minutes} min
+                                </span>
+                              )}
                             </div>
-                          ))}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))}
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </Card>
