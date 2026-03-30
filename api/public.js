@@ -204,11 +204,15 @@ export default async function handler(req, res) {
         const [fm] = await fmR.json()
         formFields = fm?.fields || []
       }
-      const byType  = (type)    => { const f = formFields.find(f => f.type === type);                          return f ? (answers[f.id] || '') : '' }
-      const byLabel = (pattern) => { const f = formFields.find(f => f.label?.toLowerCase().includes(pattern)); return f ? (answers[f.id] || '') : '' }
-      const name     = byLabel('name')  || Object.values(answers)[0] || 'Unknown'
-      const email    = byType('email')  || byLabel('email')
-      const rawPhone = byType('tel')    || byLabel('phone')
+      const byType    = (type)    => { const f = formFields.find(f => f.type === type);                          return f ? (answers[f.id] || '') : '' }
+      const byLabel   = (pattern) => { const f = formFields.find(f => f.label?.toLowerCase().includes(pattern)); return f ? (answers[f.id] || '') : '' }
+      const byMapping = (key)     => { const f = formFields.find(f => f.participant_field === key);              return f ? (answers[f.id] || '') : '' }
+      const name      = byMapping('name')  || byLabel('name')  || Object.values(answers)[0] || 'Unknown'
+      const email     = byMapping('email') || byType('email')  || byLabel('email')
+      const occupation = byMapping('occupation')
+      const location   = byMapping('location')
+      const age_group  = byMapping('age_group')
+      const rawPhone  = byMapping('phone') || byType('tel')    || byLabel('phone')
       // Phone stored as "ISO|localNumber" (e.g. "GB|07911123456") or legacy "+44|07911123456"
       // Normalize to E.164 using libphonenumber-js, strip leading trunk digit (0) automatically
       let phone = rawPhone
@@ -232,7 +236,7 @@ export default async function handler(req, res) {
 
       const pr = await fetch(`${SB_URL}/rest/v1/participants`, {
         method: 'POST', headers: { ...hdrs, 'Prefer': 'return=representation' },
-        body: JSON.stringify({ workspace_id: study.workspace_id, study_id: study.id, name, email, phone, status: 'booked', booked_at: slot?.starts_at || new Date().toISOString(), form_data: answers }),
+        body: JSON.stringify({ workspace_id: study.workspace_id, study_id: study.id, name, email, phone, ...(occupation && { occupation }), ...(location && { location }), ...(age_group && { age_group }), status: 'booked', booked_at: slot?.starts_at || new Date().toISOString(), form_data: answers }),
       })
       const parts = await pr.json()
       const participant = parts[0]

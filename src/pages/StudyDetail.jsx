@@ -35,12 +35,22 @@ const FIELD_TYPES = [
   { value: 'consent_checks', label: 'Mandatory checks' },
 ]
 
+const PARTICIPANT_INFO_FIELDS = [
+  { value: 'name',       label: 'Full name'  },
+  { value: 'email',      label: 'Email'      },
+  { value: 'phone',      label: 'Phone'      },
+  { value: 'occupation', label: 'Occupation' },
+  { value: 'location',   label: 'Location'   },
+  { value: 'age_group',  label: 'Age group'  },
+]
+
 const EMPTY_FIELD = {
   id: '', label: '', type: 'text', required: false,
   options: [], is_screener: false, disqualify_if: '',
   condition_field: '', condition_value: '',
   phone_default_code: 'GB', phone_lock_code: false,
   consent_items: [], show_select_all: false,
+  participant_field: '',
 }
 
 
@@ -952,6 +962,28 @@ export default function StudyDetail() {
                       <span className="text-sm">Show "Select all" checkbox</span>
                     </label>
                   )}
+                </div>
+              )}
+
+              {/* Participant info mapping */}
+              {editingField.type !== 'consent_checks' && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Maps to participant info</Label>
+                  <Select
+                    value={editingField.participant_field || '__none__'}
+                    onValueChange={v => setEditingField(f => ({ ...f, participant_field: v === '__none__' ? '' : v }))}>
+                    <SelectTrigger><SelectValue placeholder="None (store in form responses only)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {PARTICIPANT_INFO_FIELDS.filter(pf =>
+                        pf.value === editingField.participant_field ||
+                        !(form?.fields || []).some(f => f.id !== editingField.id && f.participant_field === pf.value)
+                      ).map(pf => (
+                        <SelectItem key={pf.value} value={pf.value}>{pf.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">Answer will be saved directly to the participant's profile</p>
                 </div>
               )}
 

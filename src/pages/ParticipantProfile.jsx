@@ -270,7 +270,7 @@ export default function ParticipantProfile() {
                 <CardContent className="space-y-3">
                   {editing ? (
                     <div className="grid grid-cols-2 gap-3">
-                      {[['name','Full name','text'],['email','Email','email'],['phone','Phone','tel'],['location','Location','text'],['age_group','Age group','text']].map(([k,l,t]) => (
+                      {[['name','Full name','text'],['email','Email','email'],['phone','Phone','tel'],['occupation','Occupation','text'],['location','Location','text'],['age_group','Age group','text']].map(([k,l,t]) => (
                         <div key={k} className="space-y-1.5">
                           <Label className="text-xs">{l}</Label>
                           <Input type={t} value={form[k]||''} onChange={e => setForm(f=>({...f,[k]:e.target.value}))} className="h-8 text-sm" />
@@ -312,6 +312,7 @@ export default function ParticipantProfile() {
                       {[
                         ['Email',       form.email],
                         ['Phone',       form.phone],
+                        ['Occupation',  form.occupation],
                         ['Location',    form.location],
                         ['Age group',   form.age_group],
                         ['Scheduled',   formatDateTime(form.booked_at)],
