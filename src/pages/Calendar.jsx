@@ -246,22 +246,38 @@ const openSlots = slots.filter(s => s.available && !s.is_gcal_block)
                         style={{ height: HOURS.length * HOUR_PX }}
                       >
                         {/* Hour grid lines + click targets */}
-                        {HOURS.map(h => (
-                          <div key={h}
-                            style={{ position: 'absolute', top: (h - GRID_START) * HOUR_PX, height: HOUR_PX, width: '100%' }}
-                            className="border-b border-border/50 hover:bg-muted/30 cursor-pointer group transition-colors"
-                            onClick={() => {
-                              setAddSlotCell({ day, hour: h })
-                              setAddSlotDur(windowForm.durationMinutes || '60')
-                              setAddSlotStudy('__all__')
-                              setShowAddSlot(true)
-                            }}
-                          >
-                            <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Plus className="h-3 w-3 text-muted-foreground/50" />
+                        {HOURS.map(h => {
+                          const cellStart = new Date(day); cellStart.setHours(h, 0, 0, 0)
+                          const cellEnd   = new Date(day); cellEnd.setHours(h + 1, 0, 0, 0)
+                          const blocked   = daySlots.some(s => {
+                            if (!s.is_gcal_block) return false
+                            const sStart = parseISO(s.starts_at)
+                            const sEnd   = parseISO(s.ends_at)
+                            return sStart < cellEnd && sEnd > cellStart
+                          })
+                          return (
+                            <div key={h}
+                              style={{ position: 'absolute', top: (h - GRID_START) * HOUR_PX, height: HOUR_PX, width: '100%' }}
+                              className={cn(
+                                'border-b border-border/50 transition-colors group',
+                                blocked ? 'cursor-not-allowed' : 'hover:bg-muted/30 cursor-pointer',
+                              )}
+                              onClick={() => {
+                                if (blocked) return
+                                setAddSlotCell({ day, hour: h })
+                                setAddSlotDur(windowForm.durationMinutes || '60')
+                                setAddSlotStudy('__all__')
+                                setShowAddSlot(true)
+                              }}
+                            >
+                              {!blocked && (
+                                <div className="h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Plus className="h-3 w-3 text-muted-foreground/50" />
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
 
                         {/* Slots — absolutely positioned by time and sized by duration */}
                         {daySlots.map(slot => {
