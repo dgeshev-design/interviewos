@@ -37,7 +37,7 @@ const EMPTY_FIELD = {
   id: '', label: '', type: 'text', required: false,
   options: [], is_screener: false, disqualify_if: '',
   condition_field: '', condition_value: '',
-  phone_default_code: '+1', phone_lock_code: false,
+  phone_default_code: '+44', phone_lock_code: false,
 }
 
 

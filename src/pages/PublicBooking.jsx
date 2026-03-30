@@ -370,7 +370,7 @@ export default function PublicBooking() {
               ) : field.type === 'textarea' ? (
                 <textarea style={{...s.input,minHeight:80,resize:'vertical'}} value={answers[field.id]||''} onChange={e => setAnswers(a=>({...a,[field.id]:e.target.value}))} />
               ) : field.type === 'tel' ? (() => {
-                const defaultCode = field.phone_default_code || '+1'
+                const defaultCode = field.phone_default_code || '+44'
                 const locked      = !!field.phone_lock_code
                 const stored      = answers[field.id] || ''
                 // stored as "CODE|NUMBER" internally
