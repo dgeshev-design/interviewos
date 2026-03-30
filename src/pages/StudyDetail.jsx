@@ -70,6 +70,7 @@ export default function StudyDetail() {
   const [editingField, setEditingField] = useState(null)
   const [showFieldModal, setShowFieldModal] = useState(false)
   const [newOption, setNewOption] = useState('')
+  const [activeStep, setActiveStep] = useState(1)
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [uploadingLogo, setUploadingLogo]     = useState(false)
   const bannerRef = useRef()
@@ -130,8 +131,27 @@ export default function StudyDetail() {
   }
 
   // ── Field helpers ────────────────────────────────────────────────────────
+  const stepCount  = form ? Math.max(1, ...(form.fields || []).map(f => f.step || 1)) : 1
+  const stepTitles = form?.step_titles || []
+
+  const addStep = async () => {
+    if (stepCount >= 3) return
+    const next = stepCount + 1
+    setActiveStep(next)
+    await saveForm({ step_titles: [...stepTitles, ''] })
+  }
+
+  const removeStep = async (stepNum) => {
+    if (stepNum <= 1) return
+    if (!confirm(`Remove Step ${stepNum}? Its fields will be moved to Step 1.`)) return
+    const fields = (form.fields || []).map(f => f.step === stepNum ? { ...f, step: 1 } : f)
+    const titles = (form.step_titles || []).slice(0, stepNum - 1)
+    setActiveStep(Math.min(activeStep, stepNum - 1))
+    await saveForm({ fields, step_titles: titles })
+  }
+
   const openNewField = () => {
-    setEditingField({ ...EMPTY_FIELD, id: crypto.randomUUID() })
+    setEditingField({ ...EMPTY_FIELD, id: crypto.randomUUID(), step: activeStep })
     setNewOption('')
     setShowFieldModal(true)
   }
@@ -160,13 +180,16 @@ export default function StudyDetail() {
   }
 
   const moveField = async (id, dir) => {
-    const fields = [...(form.fields || [])]
-    const idx = fields.findIndex(f => f.id === id)
-    if (dir === -1 && idx === 0) return
-    if (dir === 1  && idx === fields.length - 1) return
-    const [item] = fields.splice(idx, 1)
-    fields.splice(idx + dir, 0, item)
-    await saveForm({ fields })
+    const all = [...(form.fields || [])]
+    const stepFields = all.filter(f => (f.step || 1) === activeStep)
+    const stepIdx = stepFields.findIndex(f => f.id === id)
+    if (dir === -1 && stepIdx === 0) return
+    if (dir === 1  && stepIdx === stepFields.length - 1) return
+    const [item] = stepFields.splice(stepIdx, 1)
+    stepFields.splice(stepIdx + dir, 0, item)
+    // Rebuild full fields array preserving other steps
+    const otherFields = all.filter(f => (f.step || 1) !== activeStep)
+    await saveForm({ fields: [...otherFields, ...stepFields] })
   }
 
   const addOption = () => {
@@ -561,64 +584,115 @@ export default function StudyDetail() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm">Form fields</CardTitle>
-                  <Button size="sm" onClick={openNewField}>
-                    <Plus className="h-4 w-4 mr-1.5" /> Add field
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {(!form.fields || form.fields.length === 0) ? (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground mb-3">No fields yet. Add your first field to get started.</p>
+                  <div className="flex items-center gap-2">
+                    {stepCount < 3 && (
+                      <Button variant="outline" size="sm" onClick={addStep}>
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Add step
+                      </Button>
+                    )}
                     <Button size="sm" onClick={openNewField}>
-                      <Plus className="h-4 w-4 mr-1.5" /> Add first field
+                      <Plus className="h-4 w-4 mr-1.5" /> Add field
                     </Button>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {form.fields.map((f, idx) => (
-                      <div key={f.id} className="flex items-center gap-2 p-3 rounded-md border hover:bg-muted/20 transition-colors">
-                        {/* Reorder */}
-                        <div className="flex flex-col gap-0.5 shrink-0">
-                          <button onClick={() => moveField(f.id, -1)} disabled={idx === 0}
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-25">
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          </button>
-                          <button onClick={() => moveField(f.id, 1)} disabled={idx === form.fields.length - 1}
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-25">
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium truncate">{f.label}</span>
-                            {f.system && <Badge className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-600 border-blue-200">System</Badge>}
-                            {f.required && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Required</Badge>}
-                            {f.is_screener && <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">Screener</Badge>}
-                            {f.condition_field && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Conditional</Badge>}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {FIELD_TYPES.find(t => t.value === f.type)?.label || f.type}
-                            {f.options?.length > 0 && ` · ${f.options.length} option${f.options.length !== 1 ? 's' : ''}`}
-                          </div>
-                        </div>
-                        {/* Actions */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditField(f)}>
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </Button>
-                          {!f.system && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive"
-                              onClick={() => { if (confirm('Delete this field?')) deleteField(f.id) }}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                </div>
+
+                {/* Step tabs */}
+                {stepCount > 1 && (
+                  <div className="flex items-center gap-1 mt-3 flex-wrap">
+                    {Array.from({ length: stepCount }, (_, i) => i + 1).map(s => (
+                      <div key={s} className="flex items-center gap-1">
+                        <button
+                          onClick={() => setActiveStep(s)}
+                          className={cn(
+                            'px-3 py-1 rounded-md text-xs font-medium transition-colors',
+                            activeStep === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                           )}
-                        </div>
+                        >
+                          {(form.step_titles?.[s - 1]) || `Step ${s}`}
+                        </button>
+                        {s > 1 && activeStep === s && (
+                          <button onClick={() => removeStep(s)} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
+
+                {/* Step title editor */}
+                {stepCount > 1 && (
+                  <input
+                    className="mt-2 w-full text-xs border rounded px-2 py-1 text-muted-foreground focus:outline-none focus:border-primary"
+                    placeholder={`Step ${activeStep} title (optional)`}
+                    value={form.step_titles?.[activeStep - 1] || ''}
+                    onChange={e => {
+                      const titles = [...(form.step_titles || Array(stepCount).fill(''))]
+                      titles[activeStep - 1] = e.target.value
+                      setForm(f => ({ ...f, step_titles: titles }))
+                    }}
+                    onBlur={e => {
+                      const titles = [...(form.step_titles || Array(stepCount).fill(''))]
+                      titles[activeStep - 1] = e.target.value
+                      saveForm({ step_titles: titles })
+                    }}
+                  />
+                )}
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const stepFields = (form.fields || []).filter(f => (f.step || 1) === activeStep)
+                  if (stepFields.length === 0) return (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-muted-foreground mb-3">No fields in this step yet.</p>
+                      <Button size="sm" onClick={openNewField}>
+                        <Plus className="h-4 w-4 mr-1.5" /> Add field
+                      </Button>
+                    </div>
+                  )
+                  return (
+                    <div className="space-y-2">
+                      {stepFields.map((f, idx) => (
+                        <div key={f.id} className="flex items-center gap-2 p-3 rounded-md border hover:bg-muted/20 transition-colors">
+                          <div className="flex flex-col gap-0.5 shrink-0">
+                            <button onClick={() => moveField(f.id, -1)} disabled={idx === 0}
+                              className="text-muted-foreground hover:text-foreground disabled:opacity-25">
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => moveField(f.id, 1)} disabled={idx === stepFields.length - 1}
+                              className="text-muted-foreground hover:text-foreground disabled:opacity-25">
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium truncate">{f.label}</span>
+                              {f.system && <Badge className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-600 border-blue-200">System</Badge>}
+                              {f.required && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Required</Badge>}
+                              {f.is_screener && <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">Screener</Badge>}
+                              {f.condition_field && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Conditional</Badge>}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {FIELD_TYPES.find(t => t.value === f.type)?.label || f.type}
+                              {f.options?.length > 0 && ` · ${f.options.length} option${f.options.length !== 1 ? 's' : ''}`}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditField(f)}>
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
+                            {!f.system && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive"
+                                onClick={() => { if (confirm('Delete this field?')) deleteField(f.id) }}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
               </CardContent>
             </Card>
 

@@ -6,11 +6,12 @@ import { PHONE_CODES } from '@/lib/phoneCodes'
 
 export default function PublicBooking() {
   const { studySlug } = useParams()
-  const [data, setData]         = useState(null)   // { study, form, slots }
-  const [step, setStep]         = useState('form') // form | book | done | disqualified | error
+  const [data, setData]         = useState(null)
+  const [step, setStep]         = useState('form') // form | book | done | disqualified
+  const [formStep, setFormStep] = useState(1)      // which form step (1,2,3)
   const [answers, setAnswers]   = useState({})
   const [selectedSlot, setSelectedSlot] = useState(null)
-  const [calendarDate, setCalendarDate] = useState(null) // week anchor date
+  const [calendarDate, setCalendarDate] = useState(null)
   const [selectedDate, setSelectedDate] = useState(null)
   const [loading, setLoading]   = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -50,19 +51,12 @@ export default function PublicBooking() {
   const bannerUrl     = activeForm?.banner_url || null
   const logoUrl       = activeForm?.logo_url || null
 
-  const checkScreeners = () => {
-    if (!fields.length) return true
-    for (const field of fields) {
-      if (field.is_screener && field.disqualify_if) {
-        const answer = answers[field.id]
-        if (answer === field.disqualify_if) return false
-      }
-    }
-    return true
-  }
+  const stepCount        = fields.length ? Math.max(...fields.map(f => f.step || 1)) : 1
+  const stepTitles       = activeForm?.step_titles || []
+  const currentStepFields = fields.filter(f => (f.step || 1) === formStep)
 
   const handleFormSubmit = () => {
-    const missing = fields.filter(f => {
+    const missing = currentStepFields.filter(f => {
       if (!f.required) return false
       const val = answers[f.id]
       if (f.type === 'tel') {
@@ -73,8 +67,17 @@ export default function PublicBooking() {
     })
     if (missing.length) { setError(`Please fill in: ${missing.map(f => f.label).join(', ')}`); return }
     setError('')
-    if (!checkScreeners()) { setStep('disqualified'); return }
-    setStep('book')
+    // Check screeners for current step
+    for (const field of currentStepFields) {
+      if (field.is_screener && field.disqualify_if && answers[field.id] === field.disqualify_if) {
+        setStep('disqualified'); return
+      }
+    }
+    if (formStep < stepCount) {
+      setFormStep(s => s + 1)
+    } else {
+      setStep('book')
+    }
   }
 
   const handleBooking = async () => {
@@ -325,7 +328,30 @@ export default function PublicBooking() {
         <div style={s.h2}>{data?.study?.name || 'Research session'}</div>
         <p style={s.sub}>{data?.study?.description || 'Complete this short form to register for a research session.'}</p>
 
-        {fields.map(field => {
+        {/* Step indicator */}
+        {stepCount > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
+            {Array.from({ length: stepCount }, (_, i) => i + 1).map(n => (
+              <div key={n} style={{
+                height: 4, flex: 1, borderRadius: 4,
+                background: n <= formStep ? brandColor : '#e5e7eb',
+                transition: '0.2s',
+              }} />
+            ))}
+            <span style={{ fontSize: 12, color: '#9ca3af', whiteSpace: 'nowrap', marginLeft: 4 }}>
+              {formStep} / {stepCount}
+            </span>
+          </div>
+        )}
+
+        {/* Step title if set */}
+        {stepCount > 1 && stepTitles[formStep - 1] && (
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: '#374151', marginBottom: 16 }}>
+            {stepTitles[formStep - 1]}
+          </div>
+        )}
+
+        {currentStepFields.map(field => {
           if (!shouldShow(field)) return null
           return (
             <div key={field.id} style={s.fieldWrap}>
@@ -425,7 +451,16 @@ export default function PublicBooking() {
         })}
 
         {error && <div style={s.err}>{error}</div>}
-        <button style={s.btn} onClick={handleFormSubmit}>Continue →</button>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }} className="pb-btn-row">
+          {formStep > 1 && (
+            <button type="button" style={{ ...s.btnOut, flex: '0 0 auto', marginTop: 0 }} onClick={() => { setFormStep(s => s - 1); setError('') }}>
+              ← Back
+            </button>
+          )}
+          <button style={{ ...s.btn, marginTop: 0, flex: '1 1 auto' }} onClick={handleFormSubmit}>
+            {formStep < stepCount ? 'Next →' : 'Continue →'}
+          </button>
+        </div>
       </div></div>
     </div></div>
   )

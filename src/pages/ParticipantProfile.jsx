@@ -46,6 +46,7 @@ export default function ParticipantProfile() {
 
   const [editing, setEditing]         = useState(false)
   const [form, setForm]               = useState(null)
+  const [formFields, setFormFields]   = useState([])
   const [tagInput, setTagInput]       = useState('')
   const [newQuote, setNewQuote]       = useState('')
   const [selectedText, setSelectedText] = useState('')
@@ -59,6 +60,12 @@ export default function ParticipantProfile() {
   useEffect(() => {
     if (participant && !form) setForm({ ...participant })
   }, [participant])
+
+  useEffect(() => {
+    if (!study?.id) return
+    supabase.from('forms').select('fields').eq('study_id', study.id).eq('is_active', true).maybeSingle()
+      .then(({ data }) => { if (data?.fields) setFormFields(data.fields) })
+  }, [study?.id])
 
   useEffect(() => {
     // Load signed URLs for files
@@ -316,6 +323,41 @@ export default function ParticipantProfile() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Form responses (grouped by step) */}
+              {formFields.length > 0 && participant?.form_data && (() => {
+                const stepCount = Math.max(...formFields.map(f => f.step || 1))
+                const steps = Array.from({ length: stepCount }, (_, i) => i + 1)
+                return steps.map(stepNum => {
+                  const stepFields = formFields.filter(f => (f.step || 1) === stepNum)
+                  const hasAnswers = stepFields.some(f => participant.form_data[f.id] != null && participant.form_data[f.id] !== '')
+                  if (!hasAnswers) return null
+                  return (
+                    <Card key={stepNum} className="shadow-none">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm">
+                          {stepCount > 1 ? `Form responses — Step ${stepNum}` : 'Form responses'}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {stepFields.map(field => {
+                            const val = participant.form_data[field.id]
+                            if (val == null || val === '') return null
+                            const display = Array.isArray(val) ? val.join(', ') : String(val)
+                            return (
+                              <div key={field.id}>
+                                <div className="text-xs text-muted-foreground mb-0.5">{field.label}</div>
+                                <div className="text-sm font-medium">{display}</div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })
+              })()}
             </div>
 
             <div className="space-y-4">
