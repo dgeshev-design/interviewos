@@ -112,7 +112,7 @@ export default function Settings() {
   }
 
   const handleRemoveMember = async (memberId) => {
-    if (!confirm('Remove this person's access?')) return
+    if (!confirm("Remove this person's access?")) return
     await supabase.from('workspace_members').delete().eq('id', memberId)
     setMembers(prev => prev.filter(m => m.id !== memberId))
   }
