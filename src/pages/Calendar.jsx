@@ -25,8 +25,8 @@ const GRID_START = 7
 const fmtDate = (d) => format(d, 'yyyy-MM-dd')
 
 export default function Calendar() {
-  const { workspace } = useApp()
-  const { slots, loading, removeSlot, removeSlots, refetch: refetchSlots } = useSlots()
+  const { workspace, user } = useApp()
+  const { slots, loading, removeSlot, removeSlots, refetch: refetchSlots } = useSlots(null, user?.id)
   const { rule, saveRule } = useAvailabilityRule()
   const { studies } = useStudies()
   const navigate    = useNavigate()
@@ -82,7 +82,7 @@ export default function Calendar() {
   const handleSync = async () => {
     setSyncing(true)
     try {
-      const result = await syncGCal({ workspaceId: workspace.id })
+      const result = await syncGCal({ workspaceId: workspace.id, userId: user?.id })
       if (result.error) toast({ title: 'Sync failed', description: result.error, variant: 'destructive' })
       else { toast({ title: 'Synced', description: `${result.synced} busy blocks imported`, variant: 'success' }); await refetchSlots() }
     } catch (e) { toast({ title: 'Sync error', description: e.message, variant: 'destructive' }) }

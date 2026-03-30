@@ -9,16 +9,20 @@ async function getRefreshedToken(rt) {
   return r.json()
 }
 
-async function getToken(workspaceId, SB_URL, hdrs) {
-  const r = await fetch(`${SB_URL}/rest/v1/google_tokens?workspace_id=eq.${workspaceId}&select=*`, { headers: hdrs })
+async function getToken(workspaceId, userId, SB_URL, hdrs) {
+  // userId scopes to a specific user's token; without it falls back to any workspace token
+  const filter = userId
+    ? `workspace_id=eq.${workspaceId}&user_id=eq.${userId}`
+    : `workspace_id=eq.${workspaceId}`
+  const r = await fetch(`${SB_URL}/rest/v1/google_tokens?${filter}&select=*`, { headers: hdrs })
   const tokens = await r.json()
   if (!tokens.length) throw new Error('No Google token. Please connect Google Calendar in Settings.')
-  let { access_token, refresh_token: rt, expiry } = tokens[0]
+  let { id: tokenId, access_token, refresh_token: rt, expiry } = tokens[0]
   if (expiry && new Date(expiry).getTime() - Date.now() < 300000 && rt) {
     const refreshed = await getRefreshedToken(rt)
     if (!refreshed.error) {
       access_token = refreshed.access_token
-      await fetch(`${SB_URL}/rest/v1/google_tokens?workspace_id=eq.${workspaceId}`, {
+      await fetch(`${SB_URL}/rest/v1/google_tokens?id=eq.${tokenId}`, {
         method: 'PATCH', headers: hdrs,
         body: JSON.stringify({ access_token, expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(), updated_at: new Date().toISOString() }),
       })
@@ -39,14 +43,14 @@ export default async function handler(req, res) {
   // ── save-token ──────────────────────────────────────────────────────────
   if (action === 'save-token') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { workspaceId, accessToken, refreshToken, expiresIn, email } = req.body
+    const { workspaceId, userId, accessToken, refreshToken, expiresIn, email } = req.body
     if (!workspaceId || !accessToken) return res.status(400).json({ error: 'Missing fields' })
     try {
       const expiry = expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : null
       const r = await fetch(`${SB_URL}/rest/v1/google_tokens`, {
         method: 'POST',
         headers: { ...hdrs, 'Prefer': 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify({ workspace_id: workspaceId, access_token: accessToken, refresh_token: refreshToken || null, expiry, email: email || null, updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ workspace_id: workspaceId, user_id: userId || null, access_token: accessToken, refresh_token: refreshToken || null, expiry, email: email || null, updated_at: new Date().toISOString() }),
       })
       const d = await r.json()
       if (!r.ok) return res.status(r.status).json({ error: d.message })
@@ -57,10 +61,10 @@ export default async function handler(req, res) {
   // ── sync ────────────────────────────────────────────────────────────────
   if (action === 'sync') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { workspaceId } = req.body
+    const { workspaceId, userId } = req.body
     if (!workspaceId) return res.status(400).json({ error: 'Missing workspaceId' })
     try {
-      const token = await getToken(workspaceId, SB_URL, hdrs)
+      const token = await getToken(workspaceId, userId, SB_URL, hdrs)
       const todayStart = new Date(); todayStart.setUTCHours(0,0,0,0)
       const now = todayStart.toISOString()
       const future = new Date(Date.now() + 60 * 86400000).toISOString()
@@ -86,8 +90,11 @@ export default async function handler(req, res) {
         }
       }
 
-      // ── Rebuild gcal busy blocks ─────────────────────────────────────────
-      await fetch(`${SB_URL}/rest/v1/slots?workspace_id=eq.${workspaceId}&is_gcal_block=eq.true`, { method: 'DELETE', headers: hdrs })
+      // ── Rebuild gcal busy blocks (per-user) ─────────────────────────────
+      const gcalBlockFilter = userId
+        ? `workspace_id=eq.${workspaceId}&is_gcal_block=eq.true&user_id=eq.${userId}`
+        : `workspace_id=eq.${workspaceId}&is_gcal_block=eq.true`
+      await fetch(`${SB_URL}/rest/v1/slots?${gcalBlockFilter}`, { method: 'DELETE', headers: hdrs })
       const blocks = events
         .filter(e => (e.start?.dateTime || e.start?.date) && e.status !== 'cancelled' && !e.description?.includes('InterviewOS session'))
         .map(e => {
@@ -96,7 +103,7 @@ export default async function handler(req, res) {
           const starts_at = isAllDay ? `${e.start.date}T00:00:00` : e.start.dateTime
           const ends_at   = isAllDay ? `${e.end.date}T00:00:00`   : e.end.dateTime
           const duration_minutes = Math.round((new Date(ends_at) - new Date(starts_at)) / 60000)
-          return { workspace_id: workspaceId, starts_at, ends_at, duration_minutes, available: false, is_gcal_block: true, gcal_event_id: e.id, meet_link: '', study_id: null }
+          return { workspace_id: workspaceId, user_id: userId || null, starts_at, ends_at, duration_minutes, available: false, is_gcal_block: true, gcal_event_id: e.id, meet_link: '', study_id: null }
         })
       if (blocks.length > 0) await fetch(`${SB_URL}/rest/v1/slots`, { method: 'POST', headers: { ...hdrs, 'Prefer': 'return=minimal' }, body: JSON.stringify(blocks) })
       return res.status(200).json({ success: true, synced: blocks.length })
@@ -106,10 +113,10 @@ export default async function handler(req, res) {
   // ── create ──────────────────────────────────────────────────────────────
   if (action === 'create') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { workspaceId, participantName, participantEmail, startsAt, durationMinutes, title } = req.body
+    const { workspaceId, userId, participantName, participantEmail, startsAt, durationMinutes, title } = req.body
     if (!workspaceId || !startsAt) return res.status(400).json({ error: 'Missing fields' })
     try {
-      const token = await getToken(workspaceId, SB_URL, hdrs)
+      const token = await getToken(workspaceId, userId, SB_URL, hdrs)
       const start = new Date(startsAt)
       const end   = new Date(start.getTime() + (durationMinutes || 60) * 60000)
       const attendees = [{ email: token.email }]
@@ -129,10 +136,10 @@ export default async function handler(req, res) {
   // ── cancel event ────────────────────────────────────────────────────────
   if (action === 'cancel') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { workspaceId, eventId } = req.body
+    const { workspaceId, userId, eventId } = req.body
     if (!workspaceId || !eventId) return res.status(400).json({ error: 'Missing fields' })
     try {
-      const token = await getToken(workspaceId, SB_URL, hdrs)
+      const token = await getToken(workspaceId, userId, SB_URL, hdrs)
       const dr = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token.access_token}` },
@@ -149,7 +156,7 @@ export default async function handler(req, res) {
   // ── generate slots ──────────────────────────────────────────────────────
   if (action === 'generate') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { workspaceId, studyId, dateFrom, dateTo, timeFrom, timeTo, durationMinutes, bufferMinutes, daysOfWeek, timezoneOffset } = req.body
+    const { workspaceId, userId, studyId, dateFrom, dateTo, timeFrom, timeTo, durationMinutes, bufferMinutes, daysOfWeek, timezoneOffset } = req.body
     if (!workspaceId || !dateFrom || !dateTo) return res.status(400).json({ error: 'Missing fields' })
     try {
       const dur = parseInt(durationMinutes, 10) || 60
@@ -175,7 +182,7 @@ export default async function handler(req, res) {
           const dayEnd   = new Date(cur); dayEnd.setUTCHours(toUTCH, toUTCM, 0, 0)
           let s = new Date(dayStart)
           while (s.getTime() + dur * 60000 <= dayEnd.getTime()) {
-            slots.push({ workspace_id: workspaceId, study_id: studyId || null, starts_at: s.toISOString(), ends_at: new Date(s.getTime() + dur * 60000).toISOString(), duration_minutes: dur, available: true, is_gcal_block: false, meet_link: '' })
+            slots.push({ workspace_id: workspaceId, user_id: userId || null, study_id: studyId || null, starts_at: s.toISOString(), ends_at: new Date(s.getTime() + dur * 60000).toISOString(), duration_minutes: dur, available: true, is_gcal_block: false, meet_link: '' })
             s = new Date(s.getTime() + step * 60000)
           }
         }

@@ -98,7 +98,7 @@ export default function ParticipantProfile() {
       // Find the slot booked by this participant
       const { data: slotRows } = await supabase
         .from('slots')
-        .select('id, gcal_event_id')
+        .select('id, gcal_event_id, user_id')
         .eq('participant_id', participantId)
         .maybeSingle()
 
@@ -106,7 +106,7 @@ export default function ParticipantProfile() {
       if (slotRows) {
         await supabase.from('slots').delete().eq('id', slotRows.id)
         if (slotRows.gcal_event_id) {
-          await cancelCalEvent({ workspaceId: workspace.id, eventId: slotRows.gcal_event_id })
+          await cancelCalEvent({ workspaceId: workspace.id, userId: slotRows.user_id, eventId: slotRows.gcal_event_id })
         }
       }
 

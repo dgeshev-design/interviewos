@@ -179,11 +179,24 @@ export default async function handler(req, res) {
         if (gcalConflicts.length) return res.status(409).json({ error: 'This time is no longer available.' })
 
         // Insert the booked slot
+        // Find the pre-generated available slot to inherit its user_id (the interviewer)
+        const availR = await fetch(
+          `${SB_URL}/rest/v1/slots?workspace_id=eq.${study.workspace_id}&available=eq.true&is_gcal_block=eq.false&starts_at=eq.${encodeURIComponent(startsAt)}&select=id,user_id&limit=1`,
+          { headers: hdrs }
+        )
+        const availSlots = await availR.json()
+        const slotUserId = availSlots[0]?.user_id || null
+        // Delete the pre-generated slot so it's no longer shown as available
+        if (availSlots[0]?.id) {
+          await fetch(`${SB_URL}/rest/v1/slots?id=eq.${availSlots[0].id}`, { method: 'DELETE', headers: hdrs })
+        }
+
         const slotInsR = await fetch(`${SB_URL}/rest/v1/slots`, {
           method: 'POST',
           headers: { ...hdrs, 'Prefer': 'return=representation' },
           body: JSON.stringify({
             workspace_id:     study.workspace_id,
+            user_id:          slotUserId,
             study_id:         study.id,
             starts_at:        startsAt,
             ends_at:          slotEnd,
@@ -234,16 +247,20 @@ export default async function handler(req, res) {
       let meetLink = ''
       if (slot) {
         try {
-          const tokR = await fetch(`${SB_URL}/rest/v1/google_tokens?workspace_id=eq.${study.workspace_id}&select=*`, { headers: hdrs })
+          // Use the slot owner's token if available; fall back to any workspace token
+          const tokFilter = slot?.user_id
+            ? `workspace_id=eq.${study.workspace_id}&user_id=eq.${slot.user_id}`
+            : `workspace_id=eq.${study.workspace_id}`
+          const tokR = await fetch(`${SB_URL}/rest/v1/google_tokens?${tokFilter}&select=*`, { headers: hdrs })
           const tokens = await tokR.json()
           if (tokens.length) {
-            let { access_token, refresh_token: rt, expiry } = tokens[0]
+            let { id: tokenId, access_token, refresh_token: rt, expiry } = tokens[0]
             if (expiry && new Date(expiry).getTime() - Date.now() < 300000 && rt) {
               const rr = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, refresh_token: rt, grant_type: 'refresh_token' }).toString() })
               const refreshed = await rr.json()
               if (!refreshed.error) {
                 access_token = refreshed.access_token
-                await fetch(`${SB_URL}/rest/v1/google_tokens?workspace_id=eq.${study.workspace_id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ access_token, expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(), updated_at: new Date().toISOString() }) })
+                await fetch(`${SB_URL}/rest/v1/google_tokens?id=eq.${tokenId}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ access_token, expiry: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(), updated_at: new Date().toISOString() }) })
               }
             }
             const gcalEmail = tokens[0].email

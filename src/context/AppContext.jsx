@@ -42,6 +42,7 @@ export function AppProvider({ children }) {
       try {
         await saveGoogleToken({
           workspaceId:  ws.id,
+          userId:       u.id,
           accessToken:  session.provider_token,
           refreshToken: session.provider_refresh_token || null,
           expiresIn:    3600,

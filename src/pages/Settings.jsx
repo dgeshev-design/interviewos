@@ -53,6 +53,7 @@ export default function Settings() {
         try {
           await saveGoogleToken({
             workspaceId:  workspace.id,
+            userId:       session.user?.id || '',
             accessToken:  session.provider_token,
             refreshToken: session.provider_refresh_token || null,
             expiresIn:    3600,
@@ -60,12 +61,13 @@ export default function Settings() {
           })
         } catch {}
       }
-      // Now check gcal status
+      // Now check gcal status for the current user specifically
       const { data } = await supabase
         .from('google_tokens')
         .select('email, updated_at')
         .eq('workspace_id', workspace.id)
-        .single()
+        .eq('user_id', user?.id)
+        .maybeSingle()
       if (data) { setGcalStatus('connected'); setGcalEmail(data.email || '') }
       else setGcalStatus('missing')
     })
@@ -141,7 +143,7 @@ export default function Settings() {
 
   const handleDisconnectGoogle = async () => {
     if (!confirm('Disconnect Google Calendar? Sync will stop working.')) return
-    await supabase.from('google_tokens').delete().eq('workspace_id', workspace.id)
+    await supabase.from('google_tokens').delete().eq('workspace_id', workspace.id).eq('user_id', user?.id)
     setGcalStatus('missing')
     setGcalEmail('')
     toast({ title: 'Disconnected', variant: 'success' })
