@@ -184,18 +184,26 @@ export default function StudyDetail() {
     const setUploading = key === 'banner_url' ? setUploadingBanner : setUploadingLogo
     setUploading(true)
     try {
-      // Ensure the storage bucket exists (creates it if missing)
-      const bucketRes = await fetch('/api/storage', { method: 'POST' })
-      if (!bucketRes.ok) {
-        const { error } = await bucketRes.json()
-        throw new Error(error || 'Could not create storage bucket')
-      }
       const ext  = file.name.split('.').pop()
       const path = `${workspace.id}/${form.id}/${key}.${ext}`
-      const { error: upErr } = await supabase.storage
-        .from('form-assets')
-        .upload(path, file, { upsert: true, contentType: file.type })
-      if (upErr) throw upErr
+
+      // Get signed upload URL from server (bypasses storage RLS)
+      const signRes = await fetch('/api/storage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sign-upload', path }),
+      })
+      const signData = await signRes.json()
+      if (!signRes.ok) throw new Error(signData.error || 'Failed to get upload URL')
+
+      // Upload file directly to the signed URL
+      const upRes = await fetch(signData.signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!upRes.ok) throw new Error('Upload failed')
+
       const { data: { publicUrl } } = supabase.storage.from('form-assets').getPublicUrl(path)
       await saveForm({ [key]: publicUrl })
     } catch (e) {
