@@ -187,25 +187,21 @@ export default function StudyDetail() {
       const ext  = file.name.split('.').pop()
       const path = `${workspace.id}/${form.id}/${key}.${ext}`
 
-      // Get signed upload URL from server (bypasses storage RLS)
-      const signRes = await fetch('/api/storage', {
+      // Read file as base64 and proxy through API (service key bypasses RLS/CORS)
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload  = () => resolve(reader.result.split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const res = await fetch('/api/storage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'sign-upload', path }),
+        body: JSON.stringify({ action: 'upload', path, contentType: file.type, data: base64 }),
       })
-      const signData = await signRes.json()
-      if (!signRes.ok) throw new Error(signData.error || 'Failed to get upload URL')
-
-      // Upload file directly to the signed URL
-      const upRes = await fetch(signData.signedUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
-      })
-      if (!upRes.ok) throw new Error('Upload failed')
-
-      const { data: { publicUrl } } = supabase.storage.from('form-assets').getPublicUrl(path)
-      await saveForm({ [key]: publicUrl })
+      const resData = await res.json()
+      if (!res.ok) throw new Error(resData.error || 'Upload failed')
+      await saveForm({ [key]: resData.publicUrl })
     } catch (e) {
       toast({ title: 'Upload failed', description: e.message, variant: 'destructive' })
     }

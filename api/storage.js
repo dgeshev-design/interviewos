@@ -1,6 +1,8 @@
 // /api/storage
-// POST action=ensure-bucket  — creates form-assets bucket if missing
-// POST action=sign-upload    — returns a signed upload URL for a given path
+// POST action=upload  — proxies file upload to Supabase using service key (bypasses RLS/CORS)
+// POST action=ensure-bucket — creates form-assets bucket if missing
+
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -15,8 +17,7 @@ export default async function handler(req, res) {
   if (action === 'ensure-bucket') {
     try {
       const r = await fetch(`${SB_URL}/storage/v1/bucket`, {
-        method: 'POST',
-        headers: hdrs,
+        method: 'POST', headers: hdrs,
         body: JSON.stringify({ id: 'form-assets', name: 'form-assets', public: true }),
       })
       const d = await r.json()
@@ -24,22 +25,18 @@ export default async function handler(req, res) {
         return res.status(r.status).json({ error: d.message || 'Failed to create bucket' })
       }
       return res.status(200).json({ ok: true })
-    } catch (e) {
-      return res.status(500).json({ error: e.message })
-    }
+    } catch (e) { return res.status(500).json({ error: e.message }) }
   }
 
-  // ── sign-upload ────────────────────────────────────────────────────────────
-  // Returns a signed upload URL so the client can PUT the file directly to
-  // Supabase Storage without needing storage RLS permissions.
-  if (action === 'sign-upload') {
-    const { path } = req.body
-    if (!path) return res.status(400).json({ error: 'Missing path' })
+  // ── upload ─────────────────────────────────────────────────────────────────
+  // Receives { path, contentType, data (base64) }, uploads via service key.
+  if (action === 'upload') {
+    const { path, contentType, data } = req.body
+    if (!path || !data) return res.status(400).json({ error: 'Missing path or data' })
     try {
-      // Ensure bucket exists first
+      // Ensure bucket exists
       const br = await fetch(`${SB_URL}/storage/v1/bucket`, {
-        method: 'POST',
-        headers: hdrs,
+        method: 'POST', headers: hdrs,
         body: JSON.stringify({ id: 'form-assets', name: 'form-assets', public: true }),
       })
       const bd = await br.json()
@@ -47,18 +44,18 @@ export default async function handler(req, res) {
         return res.status(br.status).json({ error: bd.message || 'Failed to create bucket' })
       }
 
-      // Generate signed upload URL (valid for 60s) — send empty body to satisfy Content-Type: application/json
-      const r = await fetch(`${SB_URL}/storage/v1/object/upload/sign/form-assets/${path}`, {
+      // Upload file using service key — bypasses RLS and CORS entirely
+      const buffer = Buffer.from(data, 'base64')
+      const r = await fetch(`${SB_URL}/storage/v1/object/form-assets/${path}`, {
         method: 'POST',
-        headers: hdrs,
-        body: JSON.stringify({}),
+        headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`, 'Content-Type': contentType || 'application/octet-stream', 'x-upsert': 'true' },
+        body: buffer,
       })
       const d = await r.json()
-      if (!r.ok) return res.status(r.status).json({ error: d.message || 'Failed to create signed URL' })
-      return res.status(200).json({ signedUrl: `${SB_URL}${d.url}`, token: d.token })
-    } catch (e) {
-      return res.status(500).json({ error: e.message })
-    }
+      if (!r.ok) return res.status(r.status).json({ error: d.message || 'Upload failed' })
+      const publicUrl = `${SB_URL}/storage/v1/object/public/form-assets/${path}`
+      return res.status(200).json({ publicUrl })
+    } catch (e) { return res.status(500).json({ error: e.message }) }
   }
 
   return res.status(400).json({ error: 'Unknown action' })
