@@ -206,13 +206,15 @@ export default function PublicBooking() {
     if (vis === 'today') {
       windowEnd = new Date(todayMidnight); windowEnd.setHours(23, 59, 59, 999)
     } else if (vis === 'tomorrow') {
-      windowStart = addDays(todayMidnight, 1)
-      windowEnd   = new Date(windowStart); windowEnd.setHours(23, 59, 59, 999)
+      // today + tomorrow — windowStart stays today, windowEnd = end of tomorrow
+      windowEnd = new Date(addDays(todayMidnight, 1)); windowEnd.setHours(23, 59, 59, 999)
     } else if (vis === 'range') {
       if (cfg.date_from) { const df = parseLocal(cfg.date_from); if (df > windowStart) windowStart = df }
       windowEnd = cfg.date_to ? new Date(parseLocal(cfg.date_to).setHours(23,59,59,999)) : addDays(windowStart, 30)
     } else {
-      windowEnd = addDays(todayMidnight, parseInt(cfg.days_ahead || 30, 10))
+      // 'days' — today counts as day 1, N days = today through today+(N-1)
+      const n = parseInt(cfg.days_ahead || 30, 10)
+      windowEnd = new Date(addDays(todayMidnight, n - 1)); windowEnd.setHours(23, 59, 59, 999)
     }
 
     // Allowed days-of-week from rule (0=Sun…6=Sat)

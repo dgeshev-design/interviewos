@@ -52,14 +52,15 @@ function computeSlots(rule, gcalBlocks, bookedSlots, bookingConfig) {
   if (vis === 'today') {
     windowEnd = new Date(today); windowEnd.setUTCHours(23, 59, 59, 999)
   } else if (vis === 'tomorrow') {
-    cur = new Date(today.getTime() + 86400000)
-    windowEnd = new Date(cur); windowEnd.setUTCHours(23, 59, 59, 999)
+    // today + tomorrow — windowStart stays today, windowEnd = end of tomorrow
+    windowEnd = new Date(today.getTime() + 86400000); windowEnd.setUTCHours(23, 59, 59, 999)
   } else if (vis === 'range') {
     if (cfg.date_from) { const df = new Date(cfg.date_from + 'T00:00:00Z'); if (df > cur) cur.setTime(df.getTime()) }
     windowEnd = cfg.date_to ? new Date(cfg.date_to + 'T23:59:59Z') : new Date(cur.getTime() + 30 * 86400000)
   } else {
-    // 'days' (default)
-    windowEnd = new Date(cur.getTime() + parseInt(cfg.days_ahead || 30, 10) * 86400000)
+    // 'days' — today counts as day 1, so N days = today through today+(N-1)
+    windowEnd = new Date(cur.getTime() + (parseInt(cfg.days_ahead || 30, 10) - 1) * 86400000)
+    windowEnd.setUTCHours(23, 59, 59, 999)
   }
 
   const busy = [...gcalBlocks, ...bookedSlots]
