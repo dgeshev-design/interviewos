@@ -17,6 +17,7 @@ import PageHeader from '@/components/layout/PageHeader'
 import { formatDateTime, cn } from '@/lib/utils'
 import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { PHONE_CODES } from '@/lib/phoneCodes'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const EMPTY_P = { name: '', email: '', phone: '', age_group: '', location: '', status: 'booked', booked_at: '', meet_link: '', notes: '' }
@@ -39,49 +40,6 @@ const EMPTY_FIELD = {
   phone_default_code: '+1', phone_lock_code: false,
 }
 
-const PHONE_CODES = [
-  { code: '+1',   label: '🇺🇸 +1 (US/CA)' },
-  { code: '+44',  label: '🇬🇧 +44 (UK)' },
-  { code: '+49',  label: '🇩🇪 +49 (DE)' },
-  { code: '+33',  label: '🇫🇷 +33 (FR)' },
-  { code: '+34',  label: '🇪🇸 +34 (ES)' },
-  { code: '+39',  label: '🇮🇹 +39 (IT)' },
-  { code: '+31',  label: '🇳🇱 +31 (NL)' },
-  { code: '+46',  label: '🇸🇪 +46 (SE)' },
-  { code: '+47',  label: '🇳🇴 +47 (NO)' },
-  { code: '+45',  label: '🇩🇰 +45 (DK)' },
-  { code: '+358', label: '🇫🇮 +358 (FI)' },
-  { code: '+41',  label: '🇨🇭 +41 (CH)' },
-  { code: '+43',  label: '🇦🇹 +43 (AT)' },
-  { code: '+32',  label: '🇧🇪 +32 (BE)' },
-  { code: '+351', label: '🇵🇹 +351 (PT)' },
-  { code: '+48',  label: '🇵🇱 +48 (PL)' },
-  { code: '+420', label: '🇨🇿 +420 (CZ)' },
-  { code: '+36',  label: '🇭🇺 +36 (HU)' },
-  { code: '+40',  label: '🇷🇴 +40 (RO)' },
-  { code: '+7',   label: '🇷🇺 +7 (RU)' },
-  { code: '+380', label: '🇺🇦 +380 (UA)' },
-  { code: '+90',  label: '🇹🇷 +90 (TR)' },
-  { code: '+972', label: '🇮🇱 +972 (IL)' },
-  { code: '+971', label: '🇦🇪 +971 (AE)' },
-  { code: '+966', label: '🇸🇦 +966 (SA)' },
-  { code: '+91',  label: '🇮🇳 +91 (IN)' },
-  { code: '+86',  label: '🇨🇳 +86 (CN)' },
-  { code: '+81',  label: '🇯🇵 +81 (JP)' },
-  { code: '+82',  label: '🇰🇷 +82 (KR)' },
-  { code: '+65',  label: '🇸🇬 +65 (SG)' },
-  { code: '+61',  label: '🇦🇺 +61 (AU)' },
-  { code: '+64',  label: '🇳🇿 +64 (NZ)' },
-  { code: '+55',  label: '🇧🇷 +55 (BR)' },
-  { code: '+52',  label: '🇲🇽 +52 (MX)' },
-  { code: '+54',  label: '🇦🇷 +54 (AR)' },
-  { code: '+56',  label: '🇨🇱 +56 (CL)' },
-  { code: '+57',  label: '🇨🇴 +57 (CO)' },
-  { code: '+27',  label: '🇿🇦 +27 (ZA)' },
-  { code: '+20',  label: '🇪🇬 +20 (EG)' },
-  { code: '+234', label: '🇳🇬 +234 (NG)' },
-  { code: '+254', label: '🇰🇪 +254 (KE)' },
-]
 
 export default function StudyDetail() {
   const { studyId } = useParams()
