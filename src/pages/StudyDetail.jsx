@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useStudies } from '@/hooks/useStudies'
 import { useParticipants } from '@/hooks/useParticipants'
 import { useApp } from '@/context/AppContext'
@@ -17,7 +17,7 @@ import PageHeader from '@/components/layout/PageHeader'
 import { formatDateTime, cn } from '@/lib/utils'
 import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { PHONE_CODES } from '@/lib/phoneCodes'
+import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 import NotionEditor from '@/components/ui/notion-editor'
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ const EMPTY_FIELD = {
   id: '', label: '', type: 'text', required: false,
   options: [], is_screener: false, disqualify_if: '',
   condition_field: '', condition_value: '',
-  phone_default_code: '+44', phone_lock_code: false,
+  phone_default_code: 'GB', phone_lock_code: false,
   consent_items: [], show_select_all: false,
 }
 
@@ -54,8 +54,10 @@ export default function StudyDetail() {
 
   const study = studies.find(s => s.id === studyId)
 
-  // Tabs
-  const [tab, setTab] = useState('participants')
+  // Tabs — URL-driven via ?tab=
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') || 'participants'
+  const setTab = (t) => setSearchParams(p => { const n = new URLSearchParams(p); n.set('tab', t); return n }, { replace: true })
 
   // Participants
   const [search, setSearch]   = useState('')
@@ -861,16 +863,10 @@ export default function StudyDetail() {
                   <p className="text-sm font-medium">Phone code</p>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Default country code</Label>
-                    <Select
-                      value={editingField.phone_default_code || '+1'}
-                      onValueChange={v => setEditingField(f => ({ ...f, phone_default_code: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {PHONE_CODES.map(c => (
-                          <SelectItem key={c.code} value={c.code}>{c.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <PhoneCountryPicker
+                      value={editingField.phone_default_code || 'GB'}
+                      onChange={v => setEditingField(f => ({ ...f, phone_default_code: v }))}
+                    />
                   </div>
                   <label className="flex items-center gap-2.5 cursor-pointer">
                     <input

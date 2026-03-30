@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useParticipants } from '@/hooks/useParticipants'
 import { useParticipantFiles } from '@/hooks/useParticipantFiles'
 import { useSendLog } from '@/hooks/useSendLog'
@@ -43,6 +43,10 @@ export default function ParticipantProfile() {
 
   const participant = participants.find(p => p.id === participantId)
   const study       = studies.find(s => s.id === studyId)
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = searchParams.get('tab') || 'overview'
+  const setTab = (t) => setSearchParams(p => { const n = new URLSearchParams(p); n.set('tab', t); return n }, { replace: true })
 
   const [editing, setEditing]         = useState(false)
   const [form, setForm]               = useState(null)
@@ -247,7 +251,7 @@ export default function ParticipantProfile() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview">
+      <Tabs value={activeTab} onValueChange={setTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="notes">Notes & Quotes</TabsTrigger>

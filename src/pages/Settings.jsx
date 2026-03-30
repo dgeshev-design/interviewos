@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import TemplateModal from '@/components/comms/TemplateModal'
 import { TRIGGER_LABELS, applyTemplateVars } from '@/lib/utils'
+import { normalizeToE164 } from '@/lib/phoneCodes'
 import PageHeader from '@/components/layout/PageHeader'
 import { useToast } from '@/hooks/use-toast'
 import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Users } from 'lucide-react'
@@ -160,15 +161,8 @@ export default function Settings() {
     }
   }
 
-  // Normalise phone: handles "CODE|NUMBER" storage format → "+15551234567"
-  const normalisePhone = (raw) => {
-    if (!raw) return ''
-    if (raw.includes('|')) {
-      const [code, num] = raw.split('|')
-      return `${code}${num.replace(/\D/g, '')}`
-    }
-    return raw
-  }
+  // Normalise phone to E.164 using libphonenumber-js
+  const normalisePhone = (raw) => normalizeToE164(raw) || raw || ''
 
   const handleTestSend = async () => {
     if (!testTemplate || !testParticipant) return

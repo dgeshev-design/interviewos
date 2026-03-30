@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { format, parseISO, startOfWeek, addDays, isSameDay, isToday } from 'date-fns'
 import { submitPublicForm } from '@/lib/api'
-import { PHONE_CODES } from '@/lib/phoneCodes'
+import { PHONE_BY_ISO, isPhoneValid } from '@/lib/phoneCodes'
+import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 
 export default function PublicBooking() {
   const { studySlug } = useParams()
@@ -61,7 +62,8 @@ export default function PublicBooking() {
       const val = answers[f.id]
       if (f.type === 'tel') {
         const num = val?.includes('|') ? val.split('|')[1] : val
-        return !num?.trim()
+        if (!num?.trim()) return true
+        return !isPhoneValid(val)
       }
       if (f.type === 'consent_checks') {
         const checked = val || []
@@ -436,41 +438,39 @@ export default function PublicBooking() {
               ) : field.type === 'textarea' ? (
                 <textarea style={{...s.input,minHeight:80,resize:'vertical'}} value={answers[field.id]||''} onChange={e => setAnswers(a=>({...a,[field.id]:e.target.value}))} />
               ) : field.type === 'tel' ? (() => {
-                const defaultCode = field.phone_default_code || '+44'
+                const defaultISO  = field.phone_default_code || 'GB'
                 const locked      = !!field.phone_lock_code
                 const stored      = answers[field.id] || ''
-                // stored as "CODE|NUMBER" internally
-                const [storedCode, storedNum] = stored.includes('|') ? stored.split('|') : [defaultCode, stored]
-                const setPhone = (code, num) => setAnswers(a => ({...a, [field.id]: `${code}|${num}`}))
-                const activeCode = storedCode || defaultCode
-                const activeFlag = PHONE_CODES.find(c => c.code === activeCode)?.label.split(' ')[0] || ''
+                // stored as "ISO|localNumber" e.g. "GB|07911123456"
+                const [storedISO, storedNum] = stored.includes('|') ? stored.split('|') : [defaultISO, stored]
+                const activeISO   = storedISO || defaultISO
+                const setPhone    = (iso, num) => setAnswers(a => ({...a, [field.id]: `${iso}|${num}`}))
+                const lockedEntry = PHONE_BY_ISO[activeISO]
+                const phoneStr    = stored || `${activeISO}|`
+                const valid       = storedNum ? isPhoneValid(phoneStr) : null
                 return (
-                  <div style={{display:'flex',gap:6}}>
-                    {locked ? (
-                      <span style={{...s.input, width:'auto', flexShrink:0, background:'#f3f4f6', color:'#6b7280', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, padding:'9px 10px', whiteSpace:'nowrap'}}>
-                        {activeFlag} {activeCode}
-                      </span>
-                    ) : (
-                      <select
-                        style={{...s.input, width:'auto', flexShrink:0, padding:'9px 6px', fontSize:13, cursor:'pointer'}}
-                        value={activeCode}
-                        onChange={e => setPhone(e.target.value, storedNum)}
-                      >
-                        {PHONE_CODES.map(c => {
-                          const flag = c.label.split(' ')[0]
-                          return <option key={`${c.iso}-${c.code}`} value={c.code}>{flag} {c.code}</option>
-                        })}
-                      </select>
+                  <div>
+                    <div style={{display:'flex'}}>
+                      {locked ? (
+                        <span style={{display:'flex', alignItems:'center', gap:4, padding:'0 10px', height:38, borderRadius:'6px 0 0 6px', border:'1px solid #d1d5db', borderRight:'none', background:'#f3f4f6', fontSize:13, color:'#6b7280', whiteSpace:'nowrap', flexShrink:0}}>
+                          {lockedEntry?.flag} {lockedEntry?.dialCode}
+                        </span>
+                      ) : (
+                        <PhoneCountryPicker value={activeISO} onChange={iso => setPhone(iso, storedNum)} />
+                      )}
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="Phone number"
+                        autoComplete="tel-national"
+                        style={{...s.input, flex:1, borderRadius:'0 6px 6px 0', borderLeft:'none', borderColor: valid === false ? '#fca5a5' : '#d1d5db'}}
+                        value={storedNum}
+                        onChange={e => setPhone(activeISO, e.target.value.replace(/[^\d\s\-\+\(\)]/g, ''))}
+                      />
+                    </div>
+                    {valid === false && storedNum && (
+                      <div style={{fontSize:11, color:'#ef4444', marginTop:3}}>Please enter a valid phone number</div>
                     )}
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      placeholder="Phone number"
-                      autoComplete="tel-national"
-                      style={{...s.input, flex:1}}
-                      value={storedNum}
-                      onChange={e => setPhone(activeCode, e.target.value.replace(/[^\d\s\-\+\(\)]/g, ''))}
-                    />
                   </div>
                 )
               })() : (

@@ -209,10 +209,26 @@ export default async function handler(req, res) {
       const name     = byLabel('name')  || Object.values(answers)[0] || 'Unknown'
       const email    = byType('email')  || byLabel('email')
       const rawPhone = byType('tel')    || byLabel('phone')
-      // Phone stored as "CODE|NUMBER" — combine into E.164, strip leading zero from number part
-      const phone = rawPhone?.includes('|')
-        ? (() => { const [code, num] = rawPhone.split('|'); return code + num.replace(/^\s*0/, '').replace(/\s/g, '') })()
-        : rawPhone
+      // Phone stored as "ISO|localNumber" (e.g. "GB|07911123456") or legacy "+44|07911123456"
+      // Normalize to E.164 using libphonenumber-js, strip leading trunk digit (0) automatically
+      let phone = rawPhone
+      if (rawPhone?.includes('|')) {
+        const [left, num] = rawPhone.split('|')
+        try {
+          const { parsePhoneNumberWithError, getCountries, getCountryCallingCode } = await import('libphonenumber-js')
+          // ISO format: "GB" — use directly. Legacy dial-code format: "+44" — find matching ISO
+          let iso = left
+          if (left.startsWith('+')) {
+            const dc = left.slice(1)
+            iso = getCountries().find(c => { try { return String(getCountryCallingCode(c)) === dc } catch { return false } }) || 'GB'
+          }
+          phone = parsePhoneNumberWithError(num, iso).format('E.164')
+        } catch {
+          // fallback: dial-code + number, strip leading 0
+          const dialCode = left.startsWith('+') ? left : ''
+          phone = dialCode + num.replace(/^\s*0/, '').replace(/[\s\-()]/g, '')
+        }
+      }
 
       const pr = await fetch(`${SB_URL}/rest/v1/participants`, {
         method: 'POST', headers: { ...hdrs, 'Prefer': 'return=representation' },
