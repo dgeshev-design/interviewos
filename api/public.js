@@ -206,9 +206,13 @@ export default async function handler(req, res) {
       }
       const byType  = (type)    => { const f = formFields.find(f => f.type === type);                          return f ? (answers[f.id] || '') : '' }
       const byLabel = (pattern) => { const f = formFields.find(f => f.label?.toLowerCase().includes(pattern)); return f ? (answers[f.id] || '') : '' }
-      const name  = byLabel('name')  || Object.values(answers)[0] || 'Unknown'
-      const email = byType('email')  || byLabel('email')
-      const phone = byType('tel')    || byLabel('phone')
+      const name     = byLabel('name')  || Object.values(answers)[0] || 'Unknown'
+      const email    = byType('email')  || byLabel('email')
+      const rawPhone = byType('tel')    || byLabel('phone')
+      // Phone stored as "CODE|NUMBER" — combine into E.164, strip leading zero from number part
+      const phone = rawPhone?.includes('|')
+        ? (() => { const [code, num] = rawPhone.split('|'); return code + num.replace(/^\s*0/, '').replace(/\s/g, '') })()
+        : rawPhone
 
       const pr = await fetch(`${SB_URL}/rest/v1/participants`, {
         method: 'POST', headers: { ...hdrs, 'Prefer': 'return=representation' },
@@ -276,10 +280,15 @@ export default async function handler(req, res) {
           if (t.channel === 'email' && email) {
             await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: process.env.RESEND_FROM_EMAIL, to: [email], subject: subject || 'Session confirmed', ...(t.is_html ? { html: body } : { html: body.replace(/\n/g,'<br/>'), text: body }) }) })
           }
-          if (t.channel === 'whatsapp' && phone) {
-            const sid = process.env.TWILIO_ACCOUNT_SID, token = process.env.TWILIO_AUTH_TOKEN
-            const toWA = phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`
-            await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { method: 'POST', headers: { 'Authorization': 'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ To: toWA, From: process.env.TWILIO_WHATSAPP_NUMBER, Body: body }).toString() })
+          if ((t.channel === 'sms' || t.channel === 'whatsapp') && phone) {
+            const sid = process.env.TWILIO_ACCOUNT_SID, tok = process.env.TWILIO_AUTH_TOKEN
+            const authHeader = 'Basic ' + Buffer.from(`${sid}:${tok}`).toString('base64')
+            if (t.channel === 'sms') {
+              await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { method: 'POST', headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ To: phone, From: process.env.TWILIO_PHONE_NUMBER, Body: body }).toString() })
+            } else {
+              const toWA = phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`
+              await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { method: 'POST', headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ To: toWA, From: process.env.TWILIO_WHATSAPP_NUMBER, Body: body }).toString() })
+            }
           }
           await fetch(`${SB_URL}/rest/v1/send_log`, { method: 'POST', headers: hdrs, body: JSON.stringify({ workspace_id: study.workspace_id, participant_id: participant.id, template_id: t.id, channel: t.channel, subject, body_preview: body.slice(0,200), status: 'sent' }) })
         } catch {}
