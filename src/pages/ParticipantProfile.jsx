@@ -177,14 +177,14 @@ export default function ParticipantProfile() {
       if (prizeTemplate) {
         const body    = applyTemplateVars(prizeTemplate.body, pWithCode, study)
         const subject = applyTemplateVars(prizeTemplate.subject || 'Your prize is here!', pWithCode, study)
-        await sendEmail({ to: participant.email, subject, body, isHtml: prizeTemplate.is_html })
+        await sendEmail({ to: participant.email, subject, body, isHtml: prizeTemplate.is_html, workspace_id: workspace.id })
         await supabase.from('send_log').insert({ workspace_id: workspace.id, participant_id: participantId, template_id: prizeTemplate.id, channel: 'email', status: 'sent', subject, body_preview: body.slice(0,200) })
       }
 
       const normPhone = (raw) => raw?.includes('|') ? `${raw.split('|')[0]}${raw.split('|')[1].replace(/\D/g,'')}` : (raw || '')
       if (waTemplate && participant.phone) {
         const body = applyTemplateVars(waTemplate.body, pWithCode, study)
-        await sendWhatsApp({ to: normPhone(participant.phone), body })
+        await sendWhatsApp({ to: normPhone(participant.phone), body, workspace_id: workspace.id })
         await supabase.from('send_log').insert({ workspace_id: workspace.id, participant_id: participantId, template_id: waTemplate.id, channel: 'whatsapp', status: 'sent', body_preview: body.slice(0,200) })
       }
 

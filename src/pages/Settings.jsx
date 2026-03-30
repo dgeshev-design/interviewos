@@ -14,7 +14,7 @@ import { TRIGGER_LABELS, applyTemplateVars } from '@/lib/utils'
 import { normalizeToE164 } from '@/lib/phoneCodes'
 import PageHeader from '@/components/layout/PageHeader'
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Users } from 'lucide-react'
+import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Users, Zap, Eye, EyeOff } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const CHANNEL_COLORS = { email: 'blue', whatsapp: 'success', sms: 'secondary' }
@@ -40,6 +40,12 @@ export default function Settings() {
   const [inviteRole, setInviteRole]     = useState('viewer')
   const [inviting, setInviting]         = useState(false)
   const isOwner = workspace?.id === ownWorkspace?.id
+
+  // Integrations state
+  const [intg, setIntg]           = useState(null)   // loaded workspace_settings row
+  const [intgForm, setIntgForm]   = useState(null)   // editable copy
+  const [savingIntg, setSavingIntg] = useState(false)
+  const [showSecrets, setShowSecrets] = useState({}) // { fieldKey: bool }
 
   // Send-test state
   const [testTemplate, setTestTemplate]     = useState(null) // template being tested
@@ -85,6 +91,34 @@ export default function Settings() {
       .order('created_at', { ascending: true })
       .then(({ data }) => { setMembers(data || []); setMembersLoading(false) })
   }, [ownWorkspace])
+
+  // Load integrations settings for own workspace
+  useEffect(() => {
+    if (!ownWorkspace) return
+    supabase.from('workspace_settings').select('*').eq('workspace_id', ownWorkspace.id).maybeSingle()
+      .then(({ data }) => {
+        const defaults = { email_provider: 'resend', email_api_key: '', email_from: '', email_from_name: '', twilio_account_sid: '', twilio_auth_token: '', twilio_phone_number: '', twilio_whatsapp_number: '' }
+        const row = data ? { ...defaults, ...data } : defaults
+        setIntg(row); setIntgForm(row)
+      })
+  }, [ownWorkspace])
+
+  const handleSaveIntg = async () => {
+    if (!ownWorkspace) return
+    setSavingIntg(true)
+    try {
+      const payload = { ...intgForm, workspace_id: ownWorkspace.id }
+      const { error } = await supabase.from('workspace_settings').upsert(payload, { onConflict: 'workspace_id' })
+      if (error) throw new Error(error.message)
+      setIntg(intgForm)
+      toast({ title: 'Integrations saved', variant: 'success' })
+    } catch (e) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' })
+    }
+    setSavingIntg(false)
+  }
+
+  const toggleSecret = (key) => setShowSecrets(s => ({ ...s, [key]: !s[key] }))
 
   const handleInvite = async () => {
     const email = inviteEmail.trim().toLowerCase()
@@ -177,9 +211,9 @@ export default function Settings() {
       const body = applyTemplateVars(testTemplate.body, testParticipant, null)
       const subject = applyTemplateVars(testTemplate.subject || '', testParticipant, null)
       let result
-      if      (testTemplate.channel === 'email')    result = await sendEmail({ to: testParticipant.email, subject, body, isHtml: testTemplate.is_html })
-      else if (testTemplate.channel === 'whatsapp') result = await sendWhatsApp({ to: phone, body })
-      else if (testTemplate.channel === 'sms')      result = await sendSMS({ to: phone, body })
+      if      (testTemplate.channel === 'email')    result = await sendEmail({ to: testParticipant.email, subject, body, isHtml: testTemplate.is_html, workspace_id: workspace.id })
+      else if (testTemplate.channel === 'whatsapp') result = await sendWhatsApp({ to: phone, body, workspace_id: workspace.id })
+      else if (testTemplate.channel === 'sms')      result = await sendSMS({ to: phone, body, workspace_id: workspace.id })
       if (result?.error) throw new Error(result.error)
       toast({ title: 'Test sent', description: `${testTemplate.channel} sent to ${testParticipant.name}`, variant: 'success' })
       setTestTemplate(null)
@@ -340,6 +374,102 @@ export default function Settings() {
                 {inviting ? 'Inviting…' : <><Plus className="h-3.5 w-3.5 mr-1.5" /> Invite</>}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Integrations — email + Twilio, only for workspace owner */}
+      {isOwner && intgForm && (
+        <Card className="shadow-none mb-5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Zap className="h-4 w-4 text-muted-foreground" />
+              Integrations
+            </CardTitle>
+            <CardDescription>Configure your email and SMS providers. Keys are stored per workspace and override any server defaults.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+
+            {/* Email */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Provider</Label>
+                <Select value={intgForm.email_provider} onValueChange={v => setIntgForm(f => ({ ...f, email_provider: v }))}>
+                  <SelectTrigger className="max-w-[200px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="resend">Resend</SelectItem>
+                    <SelectItem value="sendgrid">SendGrid</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5 col-span-2">
+                  <Label className="text-xs">API key</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type={showSecrets.email_api_key ? 'text' : 'password'}
+                      value={intgForm.email_api_key}
+                      onChange={e => setIntgForm(f => ({ ...f, email_api_key: e.target.value }))}
+                      placeholder={intgForm.email_provider === 'sendgrid' ? 'SG.xxxxxxx' : 're_xxxxxxx'}
+                      className="font-mono text-sm"
+                    />
+                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => toggleSecret('email_api_key')}>
+                      {showSecrets.email_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">From email</Label>
+                  <Input value={intgForm.email_from} onChange={e => setIntgForm(f => ({ ...f, email_from: e.target.value }))} placeholder="noreply@yourcompany.com" className="text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">From name</Label>
+                  <Input value={intgForm.email_from_name} onChange={e => setIntgForm(f => ({ ...f, email_from_name: e.target.value }))} placeholder="Your Company" className="text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t" />
+
+            {/* Twilio */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Twilio (SMS & WhatsApp)</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Account SID</Label>
+                  <Input value={intgForm.twilio_account_sid} onChange={e => setIntgForm(f => ({ ...f, twilio_account_sid: e.target.value }))} placeholder="ACxxxxxxx" className="font-mono text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Auth token</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type={showSecrets.twilio_auth_token ? 'text' : 'password'}
+                      value={intgForm.twilio_auth_token}
+                      onChange={e => setIntgForm(f => ({ ...f, twilio_auth_token: e.target.value }))}
+                      placeholder="••••••••"
+                      className="font-mono text-sm"
+                    />
+                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => toggleSecret('twilio_auth_token')}>
+                      {showSecrets.twilio_auth_token ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">SMS number</Label>
+                  <Input value={intgForm.twilio_phone_number} onChange={e => setIntgForm(f => ({ ...f, twilio_phone_number: e.target.value }))} placeholder="+14155552671" className="font-mono text-sm" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">WhatsApp number</Label>
+                  <Input value={intgForm.twilio_whatsapp_number} onChange={e => setIntgForm(f => ({ ...f, twilio_whatsapp_number: e.target.value }))} placeholder="+14155552671" className="font-mono text-sm" />
+                  <p className="text-[11px] text-muted-foreground">Your Twilio WhatsApp sender number</p>
+                </div>
+              </div>
+            </div>
+
+            <Button size="sm" onClick={handleSaveIntg} disabled={savingIntg}>
+              {savingIntg ? 'Saving…' : 'Save integrations'}
+            </Button>
           </CardContent>
         </Card>
       )}

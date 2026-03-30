@@ -38,9 +38,9 @@ export default function SendCommsModal({ open, onClose, participant, templates, 
       const subject = applyTemplateVars(selected.subject || '', participant, study)
 
       let result
-      if      (selected.channel === 'email')    result = await sendEmail({ to: participant.email, subject, body, isHtml: selected.is_html })
-      else if (selected.channel === 'whatsapp') result = await sendWhatsApp({ to: normalisePhone(participant.phone), body })
-      else if (selected.channel === 'sms')      result = await sendSMS({ to: normalisePhone(participant.phone), body })
+      if      (selected.channel === 'email')    result = await sendEmail({ to: participant.email, subject, body, isHtml: selected.is_html, workspace_id: workspace.id })
+      else if (selected.channel === 'whatsapp') result = await sendWhatsApp({ to: normalisePhone(participant.phone), body, workspace_id: workspace.id })
+      else if (selected.channel === 'sms')      result = await sendSMS({ to: normalisePhone(participant.phone), body, workspace_id: workspace.id })
 
       const status = result?.error ? 'failed' : 'sent'
 

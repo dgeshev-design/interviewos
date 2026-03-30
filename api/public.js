@@ -294,20 +294,43 @@ export default async function handler(req, res) {
         const dt = slot ? new Date(slot.starts_at) : null
         return text.replace(/{{name}}/g, name).replace(/{{email}}/g, email).replace(/{{phone}}/g, phone).replace(/{{study}}/g, study.name).replace(/{{date}}/g, dt ? dt.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' }) : '').replace(/{{time}}/g, dt ? dt.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }) : '').replace(/{{link}}/g, meetLink).replace(/{{prize_code}}/g, '')
       }
+      // Load workspace comms settings once for all template sends
+      const wsSettingsR = await fetch(`${SB_URL}/rest/v1/workspace_settings?workspace_id=eq.${study.workspace_id}&select=*`, { headers: hdrs })
+      const wsSettingsRows = await wsSettingsR.json()
+      const ws = wsSettingsRows?.[0] || {}
+
       await Promise.allSettled(templates.map(async t => {
         const body = applyVars(t.body); const subject = applyVars(t.subject || '')
         try {
           if (t.channel === 'email' && email) {
-            await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: process.env.RESEND_FROM_EMAIL, to: [email], subject: subject || 'Session confirmed', ...(t.is_html ? { html: body } : { html: body.replace(/\n/g,'<br/>'), text: body }) }) })
+            const provider  = ws.email_provider || 'resend'
+            const apiKey    = ws.email_api_key    || process.env.RESEND_API_KEY
+            const fromEmail = ws.email_from       || process.env.RESEND_FROM_EMAIL
+            const fromName  = ws.email_from_name  || ''
+            if (apiKey && fromEmail) {
+              if (provider === 'sendgrid') {
+                await fetch('https://api.sendgrid.com/v3/mail/send', { method: 'POST', headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ personalizations: [{ to: [{ email }] }], from: { email: fromEmail, ...(fromName ? { name: fromName } : {}) }, subject: subject || 'Session confirmed', content: [{ type: 'text/html', value: t.is_html ? body : body.replace(/\n/g,'<br/>') }, ...(!t.is_html ? [{ type: 'text/plain', value: body }] : [])] }) })
+              } else {
+                await fetch('https://api.resend.com/emails', { method: 'POST', headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: fromEmail, to: [email], subject: subject || 'Session confirmed', ...(t.is_html ? { html: body } : { html: body.replace(/\n/g,'<br/>'), text: body }) }) })
+              }
+            }
           }
           if ((t.channel === 'sms' || t.channel === 'whatsapp') && phone) {
-            const sid = process.env.TWILIO_ACCOUNT_SID, tok = process.env.TWILIO_AUTH_TOKEN
-            const authHeader = 'Basic ' + Buffer.from(`${sid}:${tok}`).toString('base64')
-            if (t.channel === 'sms') {
-              await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { method: 'POST', headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ To: phone, From: process.env.TWILIO_PHONE_NUMBER, Body: body }).toString() })
-            } else {
-              const toWA = phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`
-              await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { method: 'POST', headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ To: toWA, From: process.env.TWILIO_WHATSAPP_NUMBER, Body: body }).toString() })
+            const sid = ws.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID
+            const tok = ws.twilio_auth_token  || process.env.TWILIO_AUTH_TOKEN
+            if (sid && tok) {
+              const authHeader = 'Basic ' + Buffer.from(`${sid}:${tok}`).toString('base64')
+              if (t.channel === 'sms') {
+                const from = ws.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER
+                if (from) await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { method: 'POST', headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ To: phone, From: from, Body: body }).toString() })
+              } else {
+                const rawFrom = ws.twilio_whatsapp_number || process.env.TWILIO_WHATSAPP_NUMBER
+                if (rawFrom) {
+                  const toWA   = phone.startsWith('whatsapp:') ? phone : `whatsapp:${phone}`
+                  const fromWA = rawFrom.startsWith('whatsapp:') ? rawFrom : `whatsapp:${rawFrom}`
+                  await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, { method: 'POST', headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ To: toWA, From: fromWA, Body: body }).toString() })
+                }
+              }
             }
           }
           await fetch(`${SB_URL}/rest/v1/send_log`, { method: 'POST', headers: hdrs, body: JSON.stringify({ workspace_id: study.workspace_id, participant_id: participant.id, template_id: t.id, channel: t.channel, subject, body_preview: body.slice(0,200), status: 'sent' }) })
