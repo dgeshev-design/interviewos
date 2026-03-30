@@ -13,13 +13,35 @@ function computeSlots(rule, gcalBlocks, bookedSlots, bookingConfig) {
   // Convert admin local time → UTC for slot generation
   const [fH, fM] = time_from.split(':').map(Number)
   const [tH, tM] = time_to.split(':').map(Number)
-  const fromUTCMin = ((fH * 60 + fM + tzOff) % 1440 + 1440) % 1440
-  const toUTCMin   = ((tH * 60 + tM + tzOff) % 1440 + 1440) % 1440
+  // Raw UTC minutes (may be negative or >=1440 for cross-midnight timezones)
+  const fromUTCRaw = fH * 60 + fM + tzOff
+  const toUTCRaw   = tH * 60 + tM + tzOff
+  const fromUTCMin = ((fromUTCRaw) % 1440 + 1440) % 1440
+  const toUTCMin   = ((toUTCRaw)   % 1440 + 1440) % 1440
   const fromUTCH = Math.floor(fromUTCMin / 60), fromUTCM = fromUTCMin % 60
   const toUTCH   = Math.floor(toUTCMin   / 60), toUTCM   = toUTCMin   % 60
 
   const now = new Date()
   const cfg = bookingConfig || {}
+
+  // Apply per-study hour override (clamp to rule window)
+  let effectiveFromUTCH = fromUTCH, effectiveFromUTCM = fromUTCM
+  let effectiveToUTCH   = toUTCH,   effectiveToUTCM   = toUTCM
+  let crossMidnightFrom = fromUTCRaw < 0, crossMidnightTo = toUTCRaw >= 1440
+  if (cfg.hour_from) {
+    const [oH, oM] = cfg.hour_from.split(':').map(Number)
+    const oRaw = oH * 60 + oM + tzOff
+    const oMin = ((oRaw) % 1440 + 1440) % 1440
+    effectiveFromUTCH = Math.floor(oMin / 60); effectiveFromUTCM = oMin % 60
+    crossMidnightFrom = oRaw < 0
+  }
+  if (cfg.hour_to) {
+    const [oH, oM] = cfg.hour_to.split(':').map(Number)
+    const oRaw = oH * 60 + oM + tzOff
+    const oMin = ((oRaw) % 1440 + 1440) % 1440
+    effectiveToUTCH = Math.floor(oMin / 60); effectiveToUTCM = oMin % 60
+    crossMidnightTo = oRaw >= 1440
+  }
 
   // Determine window
   let daysAhead = parseInt(cfg.days_ahead || 30, 10)
@@ -33,10 +55,15 @@ function computeSlots(rule, gcalBlocks, bookedSlots, bookingConfig) {
   const slots = []
 
   while (cur <= windowEnd) {
-    if ((days_of_week || [1,2,3,4,5]).includes(cur.getUTCDay())) {
-      const dayStart = new Date(cur); dayStart.setUTCHours(fromUTCH, fromUTCM, 0, 0)
-      const dayEnd   = new Date(cur); dayEnd.setUTCHours(toUTCH,   toUTCM,   0, 0)
+    // Use local day-of-week (not UTC), since admin configured days in their timezone
+    const dayStart = new Date(cur); dayStart.setUTCHours(effectiveFromUTCH, effectiveFromUTCM, 0, 0)
+    if (crossMidnightFrom) dayStart.setUTCDate(dayStart.getUTCDate() - 1)
+    const dayEnd = new Date(cur); dayEnd.setUTCHours(effectiveToUTCH, effectiveToUTCM, 0, 0)
+    if (crossMidnightTo) dayEnd.setUTCDate(dayEnd.getUTCDate() + 1)
+    const localDayOfWeek = new Date(dayStart.getTime() - tzOff * 60000).getUTCDay()
+    if ((days_of_week || [1,2,3,4,5]).includes(localDayOfWeek)) {
       let s = new Date(dayStart)
+
       while (s.getTime() + dur * 60000 <= dayEnd.getTime()) {
         const slotEnd = new Date(s.getTime() + dur * 60000)
         if (slotEnd > now) {

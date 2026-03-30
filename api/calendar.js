@@ -205,23 +205,36 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
     const { workspaceId, daysOfWeek, timeFrom, timeTo, durationMinutes, bufferMinutes, timezoneOffset } = req.body
     if (!workspaceId) return res.status(400).json({ error: 'Missing workspaceId' })
+    const payload = {
+      workspace_id:     workspaceId,
+      days_of_week:     daysOfWeek     || [1,2,3,4,5],
+      time_from:        timeFrom        || '09:00',
+      time_to:          timeTo          || '17:00',
+      duration_minutes: parseInt(durationMinutes, 10) || 60,
+      buffer_minutes:   parseInt(bufferMinutes,   10) || 0,
+      timezone_offset:  parseInt(timezoneOffset   || 0, 10),
+      updated_at:       new Date().toISOString(),
+    }
     try {
-      const r = await fetch(`${SB_URL}/rest/v1/availability_rules`, {
-        method: 'POST',
-        headers: { ...hdrs, 'Prefer': 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify({
-          workspace_id:     workspaceId,
-          days_of_week:     daysOfWeek     || [1,2,3,4,5],
-          time_from:        timeFrom        || '09:00',
-          time_to:          timeTo          || '17:00',
-          duration_minutes: parseInt(durationMinutes, 10) || 60,
-          buffer_minutes:   parseInt(bufferMinutes,   10) || 0,
-          timezone_offset:  parseInt(timezoneOffset   || 0, 10),
-          updated_at:       new Date().toISOString(),
-        }),
-      })
-      const d = await r.json()
-      if (!r.ok) return res.status(r.status).json({ error: d.message || 'Save failed' })
+      // Check if rule already exists; PATCH if so, POST if not
+      const existR = await fetch(`${SB_URL}/rest/v1/availability_rules?workspace_id=eq.${workspaceId}&select=id`, { headers: hdrs })
+      const existing = await existR.json()
+      let r, d
+      if (existing.length) {
+        r = await fetch(`${SB_URL}/rest/v1/availability_rules?workspace_id=eq.${workspaceId}`, {
+          method: 'PATCH',
+          headers: { ...hdrs, 'Prefer': 'return=representation' },
+          body: JSON.stringify(payload),
+        })
+      } else {
+        r = await fetch(`${SB_URL}/rest/v1/availability_rules`, {
+          method: 'POST',
+          headers: { ...hdrs, 'Prefer': 'return=representation' },
+          body: JSON.stringify(payload),
+        })
+      }
+      d = await r.json()
+      if (!r.ok) return res.status(r.status).json({ error: (Array.isArray(d) ? d[0]?.message : d?.message) || 'Save failed' })
       return res.status(200).json(Array.isArray(d) ? d[0] : d)
     } catch (e) { return res.status(500).json({ error: e.message }) }
   }
