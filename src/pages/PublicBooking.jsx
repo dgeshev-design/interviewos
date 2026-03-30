@@ -195,19 +195,24 @@ export default function PublicBooking() {
     const daySlots  = selectedDate ? slotsForDate(selectedDate) : []
     const duration  = slots[0]?.duration_minutes || 60
 
-    // Compute allowed window from bookingConfig
+    // Compute allowed window from bookingConfig (mirror server logic, using local dates)
     const cfg = data?.bookingConfig || {}
+    const vis = cfg.visibility || 'days'
+    const parseLocal = (s) => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d) }
     const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0)
     let windowStart = new Date(todayMidnight)
-    let windowEnd   = new Date(todayMidnight.getTime() + (parseInt(cfg.days_ahead || 30, 10)) * 86400000)
-    if (cfg.visibility_type === 'today') {
+    let windowEnd
+
+    if (vis === 'today') {
       windowEnd = new Date(todayMidnight); windowEnd.setHours(23, 59, 59, 999)
-    } else if (cfg.visibility_type === 'tomorrow') {
+    } else if (vis === 'tomorrow') {
       windowStart = addDays(todayMidnight, 1)
       windowEnd   = new Date(windowStart); windowEnd.setHours(23, 59, 59, 999)
-    } else if (cfg.visibility_type === 'range' && cfg.date_from) {
-      const df = new Date(cfg.date_from); if (df > windowStart) windowStart = df
-      if (cfg.date_to) windowEnd = new Date(cfg.date_to)
+    } else if (vis === 'range') {
+      if (cfg.date_from) { const df = parseLocal(cfg.date_from); if (df > windowStart) windowStart = df }
+      windowEnd = cfg.date_to ? new Date(parseLocal(cfg.date_to).setHours(23,59,59,999)) : addDays(windowStart, 30)
+    } else {
+      windowEnd = addDays(todayMidnight, parseInt(cfg.days_ahead || 30, 10))
     }
 
     // Allowed days-of-week from rule (0=Sun…6=Sat)

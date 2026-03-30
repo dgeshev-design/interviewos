@@ -43,13 +43,24 @@ function computeSlots(rule, gcalBlocks, bookedSlots, bookingConfig) {
     crossMidnightTo = oRaw >= 1440
   }
 
-  // Determine window
-  let daysAhead = parseInt(cfg.days_ahead || 30, 10)
-  const cur = new Date()
-  cur.setUTCHours(0, 0, 0, 0)
-  if (cfg.date_from) { const df = new Date(cfg.date_from); if (df > cur) { cur.setTime(df.getTime()); cur.setUTCHours(0,0,0,0) } }
-  if (cfg.date_to)   { const dt = new Date(cfg.date_to); daysAhead = Math.min(daysAhead, Math.ceil((dt - cur) / 86400000) + 1) }
-  const windowEnd = new Date(cur.getTime() + daysAhead * 86400000)
+  // Determine window based on visibility type (ignore stale date_from/date_to unless visibility==='range')
+  const vis = cfg.visibility || 'days'
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0)
+  let cur = new Date(today)
+  let windowEnd
+
+  if (vis === 'today') {
+    windowEnd = new Date(today); windowEnd.setUTCHours(23, 59, 59, 999)
+  } else if (vis === 'tomorrow') {
+    cur = new Date(today.getTime() + 86400000)
+    windowEnd = new Date(cur); windowEnd.setUTCHours(23, 59, 59, 999)
+  } else if (vis === 'range') {
+    if (cfg.date_from) { const df = new Date(cfg.date_from + 'T00:00:00Z'); if (df > cur) cur.setTime(df.getTime()) }
+    windowEnd = cfg.date_to ? new Date(cfg.date_to + 'T23:59:59Z') : new Date(cur.getTime() + 30 * 86400000)
+  } else {
+    // 'days' (default)
+    windowEnd = new Date(cur.getTime() + parseInt(cfg.days_ahead || 30, 10) * 86400000)
+  }
 
   const busy = [...gcalBlocks, ...bookedSlots]
   const slots = []
