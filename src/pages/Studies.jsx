@@ -62,7 +62,7 @@ export default function Studies() {
         <div className="space-y-3">
           {studies.map(study => {
             const studyPs   = participants.filter(p => p.study_id === study.id)
-            const completed = studyPs.filter(p => p.status === 'completed').length
+            const completed = studyPs.filter(p => p.status === 'completed' || p.status === 'prize-granted').length
             const pct       = study.target_count ? Math.round((completed / study.target_count) * 100) : 0
 
             return (

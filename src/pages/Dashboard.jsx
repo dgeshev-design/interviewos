@@ -20,7 +20,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
 
   const total     = participants.length
-  const completed = participants.filter(p => p.status === 'completed').length
+  const completed = participants.filter(p => p.status === 'completed' || p.status === 'prize-granted').length
   const booked    = participants.filter(p => p.status === 'booked').length
   const noShow    = participants.filter(p => p.status === 'no-show').length
 
@@ -118,7 +118,7 @@ export default function Dashboard() {
                <div className="space-y-3">
                 {studies.slice(0, 5).map(s => {
                   const studyPs = participants.filter(p => p.study_id === s.id)
-                  const done    = studyPs.filter(p => p.status === 'completed').length
+                  const done    = studyPs.filter(p => p.status === 'completed' || p.status === 'prize-granted').length
                   const pct     = s.target_count ? Math.round((done / s.target_count) * 100) : 0
                   return (
                     <div key={s.id} className="cursor-pointer" onClick={() => navigate(`/studies/${s.id}`)}>

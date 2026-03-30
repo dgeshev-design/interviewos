@@ -215,7 +215,7 @@ export default function StudyDetail() {
     const mS = !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.email?.toLowerCase().includes(search.toLowerCase())
     return mF && mS
   })
-  const completed = participants.filter(p => p.status === 'completed').length
+  const completed = participants.filter(p => p.status === 'completed' || p.status === 'prize-granted').length
   const pct       = study?.target_count ? Math.round((completed / study.target_count) * 100) : 0
   const publicUrl  = study ? `${window.location.origin}/s/${study.slug}` : ''
   const reportUrl  = study?.report_token ? `${window.location.origin}/report/${study.report_token}` : ''
