@@ -56,20 +56,27 @@ export function AppProvider({ children }) {
     const hostname    = window.location.hostname
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
 
-    if (!isLocalhost) {
-      // Resolve via server API (service key bypasses RLS — any user gets the right workspace)
-      try {
-        const r = await fetch(`/api/workspace?domain=${encodeURIComponent(hostname)}`)
-        if (r.ok) {
-          const { workspace, is_master } = await r.json()
-          setWorkspace(workspace)
-          setIsMaster(!!is_master)
-          return workspace
-        }
-      } catch {}
+    // Always try domain-based lookup first (RLS is disabled so works for any user)
+    const { data: domainRow } = await supabase
+      .from('workspace_domains')
+      .select('workspace_id, is_master')
+      .eq('domain', isLocalhost ? 'uk.betty.com' : hostname)
+      .maybeSingle()
+
+    if (domainRow?.workspace_id) {
+      const { data: ws } = await supabase
+        .from('workspaces')
+        .select('*')
+        .eq('id', domainRow.workspace_id)
+        .single()
+      if (ws) {
+        setWorkspace(ws)
+        setIsMaster(!!domainRow.is_master)
+        return ws
+      }
     }
 
-    // Fallback for localhost / unknown domain: use existing workspace by user_id
+    // Final fallback: user's own workspace (for unknown domains)
     let { data, error } = await supabase
       .from('workspaces').select('*').eq('user_id', u.id).single()
     if (error?.code === 'PGRST116') {
@@ -81,7 +88,7 @@ export function AppProvider({ children }) {
       data = created
     }
     setWorkspace(data)
-    setIsMaster(true) // treat localhost as master for dev
+    setIsMaster(false)
     return data
   }
 
