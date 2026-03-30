@@ -24,14 +24,15 @@ import NotionEditor from '@/components/ui/notion-editor'
 const EMPTY_P = { name: '', email: '', phone: '', age_group: '', location: '', status: 'booked', booked_at: '', meet_link: '', notes: '' }
 
 const FIELD_TYPES = [
-  { value: 'text',         label: 'Short text' },
-  { value: 'email',        label: 'Email' },
-  { value: 'tel',          label: 'Phone number' },
-  { value: 'number',       label: 'Number' },
-  { value: 'textarea',     label: 'Long text' },
-  { value: 'select',       label: 'Single select' },
-  { value: 'multi_select', label: 'Multi select' },
-  { value: 'nps',          label: 'NPS scale (0–10)' },
+  { value: 'text',           label: 'Short text' },
+  { value: 'email',          label: 'Email' },
+  { value: 'tel',            label: 'Phone number' },
+  { value: 'number',         label: 'Number' },
+  { value: 'textarea',       label: 'Long text' },
+  { value: 'select',         label: 'Single select' },
+  { value: 'multi_select',   label: 'Multi select' },
+  { value: 'nps',            label: 'NPS scale (0–10)' },
+  { value: 'consent_checks', label: 'Mandatory checks' },
 ]
 
 const EMPTY_FIELD = {
@@ -39,6 +40,7 @@ const EMPTY_FIELD = {
   options: [], is_screener: false, disqualify_if: '',
   condition_field: '', condition_value: '',
   phone_default_code: '+44', phone_lock_code: false,
+  consent_items: [], show_select_all: false,
 }
 
 
@@ -841,6 +843,8 @@ export default function StudyDetail() {
                     onValueChange={v => setEditingField(f => ({
                       ...f, type: v,
                       options: (v === 'select' || v === 'multi_select') ? (f.options || []) : [],
+                      consent_items: v === 'consent_checks' ? (f.consent_items?.length ? f.consent_items : [{ id: crypto.randomUUID(), text: '' }]) : (f.consent_items || []),
+                      required: v === 'consent_checks' ? true : f.required,
                       disqualify_if: '',
                     }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -906,17 +910,66 @@ export default function StudyDetail() {
                 </div>
               )}
 
+              {/* Consent items */}
+              {editingField.type === 'consent_checks' && (
+                <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">Consent items</Label>
+                    <span className="text-[10px] text-muted-foreground">Use [text](url) to add links</span>
+                  </div>
+                  <div className="space-y-2">
+                    {(editingField.consent_items || []).map((item, i) => (
+                      <div key={item.id} className="flex gap-2 items-center">
+                        <Input
+                          className="flex-1 text-sm"
+                          value={item.text}
+                          placeholder={`e.g. I agree to the [Privacy Policy](https://...)`}
+                          onChange={e => setEditingField(f => ({
+                            ...f,
+                            consent_items: f.consent_items.map((ci, j) => j === i ? { ...ci, text: e.target.value } : ci),
+                          }))}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEditingField(f => ({ ...f, consent_items: f.consent_items.filter((_, j) => j !== i) }))}
+                          className="text-muted-foreground hover:text-destructive shrink-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline" size="sm" type="button"
+                    onClick={() => setEditingField(f => ({ ...f, consent_items: [...(f.consent_items || []), { id: crypto.randomUUID(), text: '' }] }))}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1.5" /> Add item
+                  </Button>
+                  {(editingField.consent_items || []).length > 1 && (
+                    <label className="flex items-center gap-2.5 cursor-pointer pt-1">
+                      <input
+                        type="checkbox"
+                        checked={!!editingField.show_select_all}
+                        onChange={e => setEditingField(f => ({ ...f, show_select_all: e.target.checked }))}
+                        className="rounded"
+                      />
+                      <span className="text-sm">Show "Select all" checkbox</span>
+                    </label>
+                  )}
+                </div>
+              )}
+
               {/* Required */}
-              <label className={cn('flex items-center gap-2.5', editingField.system ? 'opacity-60' : 'cursor-pointer')}>
+              <label className={cn('flex items-center gap-2.5', editingField.system || editingField.type === 'consent_checks' ? 'opacity-60' : 'cursor-pointer')}>
                 <input
                   type="checkbox"
                   checked={editingField.required}
-                  onChange={e => !editingField.system && setEditingField(f => ({ ...f, required: e.target.checked }))}
-                  disabled={editingField.system}
+                  onChange={e => !editingField.system && editingField.type !== 'consent_checks' && setEditingField(f => ({ ...f, required: e.target.checked }))}
+                  disabled={editingField.system || editingField.type === 'consent_checks'}
                   className="rounded"
                 />
                 <span className="text-sm font-medium">Required</span>
-                {editingField.system && <span className="text-xs text-blue-500 ml-1">Always required</span>}
+                {(editingField.system || editingField.type === 'consent_checks') && <span className="text-xs text-blue-500 ml-1">Always required</span>}
               </label>
 
               {/* Screener logic */}

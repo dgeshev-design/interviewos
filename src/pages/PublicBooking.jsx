@@ -63,6 +63,10 @@ export default function PublicBooking() {
         const num = val?.includes('|') ? val.split('|')[1] : val
         return !num?.trim()
       }
+      if (f.type === 'consent_checks') {
+        const checked = val || []
+        return !(f.consent_items || []).every(item => checked.includes(item.id))
+      }
       return !val?.toString().trim()
     })
     if (missing.length) { setError(`Please fill in: ${missing.map(f => f.label).join(', ')}`); return }
@@ -390,6 +394,42 @@ export default function PublicBooking() {
                         onClick={() => setAnswers(a=>({...a,[field.id]:n}))}>
                         {n}
                       </button>
+                    )
+                  })}
+                </div>
+              ) : field.type === 'consent_checks' ? (
+                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                  {field.show_select_all && (field.consent_items||[]).length > 1 && (() => {
+                    const allChecked = (field.consent_items||[]).every(ci => (answers[field.id]||[]).includes(ci.id))
+                    return (
+                      <label style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={allChecked}
+                          onChange={e => setAnswers(a => ({ ...a, [field.id]: e.target.checked ? (field.consent_items||[]).map(ci => ci.id) : [] }))}
+                          style={{ marginTop:2, accentColor:brandColor, flexShrink:0 }}
+                        />
+                        <span style={{ fontSize:13.5, fontWeight:600 }}>Select all</span>
+                      </label>
+                    )
+                  })()}
+                  {(field.consent_items||[]).map(item => {
+                    const checked = (answers[field.id]||[]).includes(item.id)
+                    const html = (item.text||'').replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+                      `<a href="$2" target="_blank" rel="noopener noreferrer" style="color:${brandColor};text-decoration:underline">$1</a>`)
+                    return (
+                      <label key={item.id} style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={e => {
+                            const cur = answers[field.id] || []
+                            setAnswers(a => ({ ...a, [field.id]: e.target.checked ? [...cur, item.id] : cur.filter(id => id !== item.id) }))
+                          }}
+                          style={{ marginTop:3, accentColor:brandColor, flexShrink:0 }}
+                        />
+                        <span style={{ fontSize:13.5, lineHeight:1.5 }} dangerouslySetInnerHTML={{ __html: html }} />
+                      </label>
                     )
                   })}
                 </div>
