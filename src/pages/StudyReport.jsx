@@ -82,7 +82,7 @@ export default function StudyReport() {
           )}
           {participants.map(p => (
             <div key={p.id} style={s.card}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 15, color: '#111827' }}>{p.name}</div>
                   {p.booked_at && (
@@ -90,8 +90,23 @@ export default function StudyReport() {
                       {format(parseISO(p.booked_at), 'MMM d, yyyy · h:mm a')}
                     </div>
                   )}
+                  {p.rating > 0 && (
+                    <div style={{ display: 'flex', gap: 2, marginTop: 6 }}>
+                      {[1,2,3,4,5].map(r => (
+                        <span key={r} style={{ fontSize: 14, color: r <= p.rating ? '#f59e0b' : '#e5e7eb' }}>★</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <span style={s.tag(statusColor[p.status] || '#6b7280')}>{p.status}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                  <span style={s.tag(statusColor[p.status] || '#6b7280')}>{p.status}</span>
+                  {p.recording_url && (
+                    <a href={p.recording_url} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: 12, color: '#6366f1', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      ▶ Recording
+                    </a>
+                  )}
+                </div>
               </div>
 
               {p.summary && (

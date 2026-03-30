@@ -293,6 +293,19 @@ export default function ParticipantProfile() {
                         <Label className="text-xs">Meet link</Label>
                         <Input value={form.meet_link||''} onChange={e => setForm(f=>({...f,meet_link:e.target.value}))} className="h-8 text-sm" />
                       </div>
+                      <div className="space-y-1.5 col-span-2">
+                        <Label className="text-xs">Recording link</Label>
+                        <Input
+                          placeholder="https://…"
+                          value={form.recording_url||''}
+                          onChange={e => {
+                            const url = e.target.value
+                            setForm(f => ({ ...f, recording_url: url, ...(url && f.status === 'booked' ? { status: 'completed' } : {}) }))
+                          }}
+                          className="h-8 text-sm"
+                        />
+                        <p className="text-[11px] text-muted-foreground">Saving a recording link marks the session as completed</p>
+                      </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 text-sm">
@@ -309,6 +322,14 @@ export default function ParticipantProfile() {
                           <div className="font-medium">{v}</div>
                         </div>
                       ))}
+                      {form.recording_url && (
+                        <div className="col-span-2">
+                          <div className="text-xs text-muted-foreground">Recording</div>
+                          <a href={form.recording_url} target="_blank" rel="noopener noreferrer" className="font-medium text-brand-600 hover:underline truncate block">
+                            {form.recording_url}
+                          </a>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

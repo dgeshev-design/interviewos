@@ -243,6 +243,8 @@ export default function Calendar() {
                           const d    = parseISO(slot.starts_at)
                           const top  = (d.getHours() - GRID_START + d.getMinutes() / 60) * HOUR_PX
                           const h    = Math.max((slot.duration_minutes / 60) * HOUR_PX - 2, 18)
+                          const pStatus = slot.participants?.status
+                          const statusDot = { completed: '#10b981', 'prize-granted': '#8b5cf6', 'no-show': '#f59e0b', cancelled: '#ef4444' }[pStatus]
                           return (
                             <div
                               key={slot.id}
@@ -258,10 +260,13 @@ export default function Calendar() {
                                   : 'bg-brand-100 text-brand-700 hover:bg-brand-200 cursor-pointer border border-brand-200'
                               )}
                             >
-                              <span className="font-medium leading-tight truncate">
-                                {slot.is_gcal_block
-                                  ? '● Busy'
-                                  : `${format(parseISO(slot.starts_at), 'HH:mm')} ${slot.participants?.name || 'Booked'}`}
+                              <span className="font-medium leading-tight truncate flex items-center gap-1">
+                                {slot.is_gcal_block ? '● Busy' : (
+                                  <>
+                                    {format(parseISO(slot.starts_at), 'HH:mm')} {slot.participants?.name || 'Booked'}
+                                    {statusDot && <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusDot, flexShrink: 0, display: 'inline-block' }} />}
+                                  </>
+                                )}
                               </span>
                               {h >= 32 && (
                                 <span className="text-[10px] opacity-70 leading-tight">{slot.duration_minutes} min</span>
@@ -360,10 +365,13 @@ export default function Calendar() {
                               : <span className="text-muted-foreground">—</span>}
                           </td>
                           <td className="p-4">
-                            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border',
-                              s.is_gcal_block ? 'bg-gray-100 text-gray-500 border-gray-200' : 'bg-blue-100 text-blue-700 border-blue-200')}>
-                              {s.is_gcal_block ? 'Busy' : 'Booked'}
-                            </span>
+                            {s.is_gcal_block ? (
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border bg-gray-100 text-gray-500 border-gray-200">Busy</span>
+                            ) : (() => {
+                              const st = s.participants?.status || 'booked'
+                              const cls = { booked: 'bg-blue-100 text-blue-700 border-blue-200', completed: 'bg-green-100 text-green-700 border-green-200', 'prize-granted': 'bg-purple-100 text-purple-700 border-purple-200', 'no-show': 'bg-amber-100 text-amber-700 border-amber-200', cancelled: 'bg-red-100 text-red-700 border-red-200', disqualified: 'bg-gray-100 text-gray-500 border-gray-200' }[st] || 'bg-blue-100 text-blue-700 border-blue-200'
+                              return <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', cls)}>{st}</span>
+                            })()}
                           </td>
                           <td className="p-4">
                             {canSelect && (

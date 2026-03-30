@@ -450,9 +450,9 @@ export default function PublicBooking() {
                 const valid       = storedNum ? isPhoneValid(phoneStr) : null
                 return (
                   <div>
-                    <div style={{display:'flex'}}>
+                    <div style={{display:'flex', alignItems:'stretch'}}>
                       {locked ? (
-                        <span style={{display:'flex', alignItems:'center', gap:4, padding:'0 10px', height:38, borderRadius:'6px 0 0 6px', border:'1px solid #d1d5db', borderRight:'none', background:'#f3f4f6', fontSize:13, color:'#6b7280', whiteSpace:'nowrap', flexShrink:0}}>
+                        <span style={{display:'flex', alignItems:'center', gap:4, padding:'9px 10px', borderRadius:'6px 0 0 6px', border:'1px solid #d1d5db', borderRight:'none', background:'#f3f4f6', fontSize:13, color:'#6b7280', whiteSpace:'nowrap', flexShrink:0, lineHeight:'1.2'}}>
                           {lockedEntry?.flag} {lockedEntry?.dialCode}
                         </span>
                       ) : (
@@ -463,7 +463,7 @@ export default function PublicBooking() {
                         inputMode="tel"
                         placeholder="Phone number"
                         autoComplete="tel-national"
-                        style={{...s.input, flex:1, borderRadius:'0 6px 6px 0', borderLeft:'none', borderColor: valid === false ? '#fca5a5' : '#d1d5db'}}
+                        style={{...s.input, flex:1, width:'auto', borderRadius:'0 6px 6px 0', borderLeftWidth:0, borderColor: valid === false ? '#fca5a5' : '#d1d5db'}}
                         value={storedNum}
                         onChange={e => setPhone(activeISO, e.target.value.replace(/[^\d\s\-\+\(\)]/g, ''))}
                       />

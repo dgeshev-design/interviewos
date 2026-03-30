@@ -325,7 +325,7 @@ export default async function handler(req, res) {
       if (!studies.length) return res.status(404).json({ error: 'Report not found.' })
       const study = studies[0]
 
-      const pr = await fetch(`${SB_URL}/rest/v1/participants?study_id=eq.${study.id}&select=id,name,status,booked_at,summary,quotes&order=created_at.asc`, { headers: hdrs })
+      const pr = await fetch(`${SB_URL}/rest/v1/participants?study_id=eq.${study.id}&select=id,name,status,booked_at,summary,quotes,rating,recording_url&order=created_at.asc`, { headers: hdrs })
       const participants = await pr.json()
 
       return res.status(200).json({ study, participants: participants || [] })

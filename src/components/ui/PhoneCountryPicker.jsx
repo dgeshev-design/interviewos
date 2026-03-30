@@ -42,10 +42,10 @@ export default function PhoneCountryPicker({ value = 'GB', onChange }) {
         onClick={() => { setOpen(o => !o); setQuery('') }}
         style={{
           display: 'flex', alignItems: 'center', gap: 4,
-          padding: '0 10px', height: 38, borderRadius: '6px 0 0 6px',
+          padding: '9px 10px', borderRadius: '6px 0 0 6px',
           border: '1px solid #d1d5db', borderRight: 'none',
           background: '#f9fafb', cursor: 'pointer', fontSize: 13,
-          whiteSpace: 'nowrap', minWidth: 90,
+          whiteSpace: 'nowrap', minWidth: 90, lineHeight: '1.2',
         }}
       >
         <span style={{ fontSize: 16 }}>{current.flag}</span>
