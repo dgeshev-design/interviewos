@@ -195,6 +195,28 @@ export default function PublicBooking() {
     const daySlots  = selectedDate ? slotsForDate(selectedDate) : []
     const duration  = slots[0]?.duration_minutes || 60
 
+    // Compute allowed window from bookingConfig
+    const cfg = data?.bookingConfig || {}
+    const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0)
+    let windowStart = new Date(todayMidnight)
+    let windowEnd   = new Date(todayMidnight.getTime() + (parseInt(cfg.days_ahead || 30, 10)) * 86400000)
+    if (cfg.visibility_type === 'today') {
+      windowEnd = new Date(todayMidnight); windowEnd.setHours(23, 59, 59, 999)
+    } else if (cfg.visibility_type === 'tomorrow') {
+      windowStart = addDays(todayMidnight, 1)
+      windowEnd   = new Date(windowStart); windowEnd.setHours(23, 59, 59, 999)
+    } else if (cfg.visibility_type === 'range' && cfg.date_from) {
+      const df = new Date(cfg.date_from); if (df > windowStart) windowStart = df
+      if (cfg.date_to) windowEnd = new Date(cfg.date_to)
+    }
+
+    // Allowed days-of-week from rule (0=Sun…6=Sat)
+    const allowedDow = cfg.days_of_week || data?.ruleDaysOfWeek || null
+
+    const isInWindow = (d) => d >= windowStart && d <= windowEnd
+    const isAllowedDow = (d) => !allowedDow || allowedDow.includes(d.getDay())
+    const isBlocked = (d) => !isInWindow(d) || !isAllowedDow(d)
+
     const navBtn = {
       width: 36, height: 36, borderRadius: 8,
       border: '1px solid #e5e7eb', background: '#fff',
@@ -225,23 +247,27 @@ export default function PublicBooking() {
           {/* Day cells */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap: 4, marginBottom: 24 }}>
             {weekDays.map(day => {
-              const avail = hasSlots(day)
-              const sel   = selectedDate && isSameDay(day, selectedDate)
-              const today = isToday(day)
+              const avail   = hasSlots(day)
+              const blocked = isBlocked(day)
+              const sel     = selectedDate && isSameDay(day, selectedDate)
+              const today   = isToday(day)
               return (
                 <button
                   key={day.toISOString()} type="button"
-                  onClick={() => { if (avail) { setSelectedDate(day); setSelectedSlot(null) } }}
+                  onClick={() => { if (avail && !blocked) { setSelectedDate(day); setSelectedSlot(null) } }}
                   style={{
                     display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
                     padding: '8px 2px', border: 'none', borderRadius: 10, fontFamily:'inherit',
-                    background: sel ? brandColor : today && !sel ? `${brandColor}15` : 'transparent',
-                    color: sel ? '#fff' : avail ? '#111827' : '#d1d5db',
-                    cursor: avail ? 'pointer' : 'default',
-                    outline: today && !sel ? `1.5px solid ${brandColor}40` : 'none',
+                    background: sel ? brandColor : blocked ? '#f3f4f6' : today && !sel ? `${brandColor}15` : 'transparent',
+                    color: sel ? '#fff' : blocked ? '#d1d5db' : avail ? '#111827' : '#d1d5db',
+                    cursor: avail && !blocked ? 'pointer' : 'default',
+                    outline: today && !sel && !blocked ? `1.5px solid ${brandColor}40` : 'none',
+                    opacity: blocked ? 0.45 : 1,
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
                 >
-                  <span style={{ fontSize:17, fontWeight: sel||today ? 600 : 400, lineHeight:1.2 }}>{format(day,'d')}</span>
+                  <span style={{ fontSize:17, fontWeight: sel||today ? 600 : 400, lineHeight:1.2, textDecoration: blocked ? 'line-through' : 'none' }}>{format(day,'d')}</span>
                   <span style={{ fontSize:11, marginTop:2, color: sel ? 'rgba(255,255,255,0.75)' : '#9ca3af' }}>{format(day,'MMM')}</span>
                 </button>
               )
