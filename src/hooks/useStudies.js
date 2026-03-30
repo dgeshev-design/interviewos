@@ -21,9 +21,10 @@ export function useStudies() {
   useEffect(() => { fetch() }, [fetch])
 
   const add = async (s) => {
+    const { data: { user } } = await supabase.auth.getUser()
     const slug = s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Math.random().toString(36).slice(2, 6)
     const { data, error } = await supabase
-      .from('studies').insert({ ...s, workspace_id: workspace.id, slug }).select().single()
+      .from('studies').insert({ ...s, workspace_id: workspace.id, slug, created_by: user?.id }).select().single()
     if (error) throw new Error(error.message)
     setStudies(p => [data, ...p])
     return data

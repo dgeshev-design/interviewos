@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import PageHeader from '@/components/layout/PageHeader'
+import { useApp } from '@/context/AppContext'
 import { cn, formatDate } from '@/lib/utils'
 import { Plus, Users, ArrowRight, MoreHorizontal } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -23,6 +24,7 @@ const STATUS_COLORS = {
 export default function Studies() {
   const { studies, loading, add, update, remove } = useStudies()
   const { participants } = useParticipants()
+  const { user } = useApp()
   const navigate = useNavigate()
 
   const [showNew, setShowNew]   = useState(false)
@@ -89,6 +91,16 @@ export default function Studies() {
                           <span className="text-xs text-muted-foreground whitespace-nowrap">{completed}/{study.target_count}</span>
                         </div>
                         <div className="text-xs text-muted-foreground">Created {formatDate(study.created_at)}</div>
+                        {study.created_by && (
+                          <div className={cn(
+                            'inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium',
+                            study.created_by === user?.id
+                              ? 'bg-brand-50 text-brand-600 border border-brand-200'
+                              : 'bg-gray-100 text-gray-500 border border-gray-200'
+                          )}>
+                            {study.created_by === user?.id ? 'You' : 'Team'}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 ml-4" onClick={e => e.stopPropagation()}>

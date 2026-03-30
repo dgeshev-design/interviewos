@@ -13,12 +13,12 @@ import TemplateModal from '@/components/comms/TemplateModal'
 import { TRIGGER_LABELS, applyTemplateVars } from '@/lib/utils'
 import PageHeader from '@/components/layout/PageHeader'
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Trash2, Check, Calendar, AlertCircle, Send } from 'lucide-react'
+import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Globe } from 'lucide-react'
 
 const CHANNEL_COLORS = { email: 'blue', whatsapp: 'success', sms: 'secondary' }
 
 export default function Settings() {
-  const { workspace, user, signInWithGoogle } = useApp()
+  const { workspace, user, isMaster, signInWithGoogle } = useApp()
   const { templates, loading: tLoading, add, update, remove } = useTemplates()
   const { toast } = useToast()
 
@@ -29,6 +29,13 @@ export default function Settings() {
   const [gcalStatus, setGcalStatus]         = useState(null) // null | 'connected' | 'missing'
   const [gcalEmail, setGcalEmail]           = useState('')
   const [connectingCal, setConnectingCal]   = useState(false)
+
+  // Domains state
+  const [domains, setDomains]           = useState([])
+  const [domainsLoading, setDomainsLoading] = useState(false)
+  const [newDomain, setNewDomain]       = useState('')
+  const [addingDomain, setAddingDomain] = useState(false)
+  const [removingDomain, setRemovingDomain] = useState(null)
 
   // Send-test state
   const [testTemplate, setTestTemplate]     = useState(null) // template being tested
@@ -63,6 +70,49 @@ export default function Settings() {
       else setGcalStatus('missing')
     })
   }, [workspace])
+
+  // Load all domains (master only)
+  useEffect(() => {
+    if (!isMaster) return
+    setDomainsLoading(true)
+    supabase.from('workspace_domains').select('*, workspaces(id, name)').order('created_at', { ascending: true })
+      .then(({ data }) => { setDomains(data || []); setDomainsLoading(false) })
+  }, [isMaster])
+
+  const handleAddDomain = async () => {
+    const d = newDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
+    if (!d) return
+    setAddingDomain(true)
+    try {
+      // Create a new workspace for this domain
+      const { data: ws, error: wsErr } = await supabase.from('workspaces').insert({ name: d, user_id: user.id }).select().single()
+      if (wsErr) throw new Error(wsErr.message)
+      // Map domain → workspace
+      const { data: row, error: dErr } = await supabase.from('workspace_domains').insert({ workspace_id: ws.id, domain: d, is_master: false }).select('*, workspaces(id, name)').single()
+      if (dErr) throw new Error(dErr.message)
+      setDomains(prev => [...prev, row])
+      setNewDomain('')
+      toast({ title: 'Domain added', description: `${d} is now live with its own workspace.`, variant: 'success' })
+    } catch (e) {
+      toast({ title: 'Failed to add domain', description: e.message, variant: 'destructive' })
+    }
+    setAddingDomain(false)
+  }
+
+  const handleRemoveDomain = async (row) => {
+    if (row.is_master) return
+    if (!confirm(`Remove ${row.domain}? This will delete its workspace and all data.`)) return
+    setRemovingDomain(row.id)
+    try {
+      // Delete workspace (cascade deletes domain row too)
+      await supabase.from('workspaces').delete().eq('id', row.workspace_id)
+      setDomains(prev => prev.filter(d => d.id !== row.id))
+      toast({ title: 'Domain removed', variant: 'success' })
+    } catch (e) {
+      toast({ title: 'Failed to remove', description: e.message, variant: 'destructive' })
+    }
+    setRemovingDomain(null)
+  }
 
   const saveWorkspace = async () => {
     setSavingWs(true)
@@ -227,6 +277,66 @@ export default function Settings() {
           )}
         </CardContent>
       </Card>
+
+      {/* Domains — master only */}
+      {isMaster && (
+        <Card className="shadow-none mb-5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              Domains
+            </CardTitle>
+            <CardDescription>Each domain has its own isolated workspace. Master domains cannot be removed.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {domainsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <div className="space-y-2">
+                {domains.map(row => (
+                  <div key={row.id} className="flex items-center justify-between p-3 rounded-md border">
+                    <div className="flex items-center gap-3">
+                      <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div>
+                        <div className="text-sm font-medium flex items-center gap-2">
+                          {row.domain}
+                          {row.is_master && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 border border-brand-200 font-medium">Master</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{row.workspaces?.name}</div>
+                      </div>
+                    </div>
+                    {!row.is_master && (
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive"
+                        disabled={removingDomain === row.id}
+                        onClick={() => handleRemoveDomain(row)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add domain */}
+            <div className="flex gap-2 pt-1">
+              <Input
+                placeholder="newdomain.com"
+                value={newDomain}
+                onChange={e => setNewDomain(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddDomain() }}
+                className="flex-1"
+              />
+              <Button size="sm" onClick={handleAddDomain} disabled={addingDomain || !newDomain.trim()}>
+                {addingDomain ? 'Adding…' : <><Plus className="h-3.5 w-3.5 mr-1.5" /> Add domain</>}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Comms templates */}
       <Card className="shadow-none">
