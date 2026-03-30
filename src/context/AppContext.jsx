@@ -55,41 +55,53 @@ export function AppProvider({ children }) {
   async function resolveWorkspace(u) {
     const hostname    = window.location.hostname
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+    const emailDomain = getEmailDomain(u.email)
 
-    // Always try domain-based lookup first (RLS is disabled so works for any user)
-    const { data: domainRow } = await supabase
-      .from('workspace_domains')
-      .select('workspace_id, is_master')
-      .eq('domain', isLocalhost ? 'uk.betty.com' : hostname)
-      .maybeSingle()
-
-    if (domainRow?.workspace_id) {
+    async function lookupByDomain(domain) {
+      const { data: dr } = await supabase
+        .from('workspace_domains')
+        .select('workspace_id, is_master')
+        .eq('domain', domain)
+        .maybeSingle()
+      if (!dr?.workspace_id) return null
       const { data: ws } = await supabase
-        .from('workspaces')
-        .select('*')
-        .eq('id', domainRow.workspace_id)
-        .single()
-      if (ws) {
-        setWorkspace(ws)
-        setIsMaster(!!domainRow.is_master)
-        return ws
-      }
+        .from('workspaces').select('*').eq('id', dr.workspace_id).single()
+      if (!ws) return null
+      setWorkspace(ws)
+      setIsMaster(!!dr.is_master)
+      return ws
     }
 
-    // Final fallback: user's own workspace (for unknown domains)
-    let { data, error } = await supabase
-      .from('workspaces').select('*').eq('user_id', u.id).single()
-    if (error?.code === 'PGRST116') {
-      const name = u.user_metadata?.full_name
-        ? `${u.user_metadata.full_name}'s Workspace`
-        : 'My Workspace'
-      const { data: created } = await supabase
-        .from('workspaces').insert({ user_id: u.id, name }).select().single()
-      data = created
+    // 1. Try hostname first (only on real domains, not localhost)
+    if (!isLocalhost) {
+      const ws = await lookupByDomain(hostname)
+      if (ws) return ws
     }
-    setWorkspace(data)
-    setIsMaster(false)
-    return data
+
+    // 2. Try email domain — works on localhost and as fallback on prod
+    //    This is the key: all users with same email domain share a workspace
+    const ws2 = await lookupByDomain(emailDomain)
+    if (ws2) return ws2
+
+    // 3. Create a new workspace (first user for this email domain)
+    //    and register the email domain so future users auto-join
+    const name = u.user_metadata?.full_name
+      ? `${u.user_metadata.full_name}'s Workspace`
+      : `${emailDomain} Workspace`
+    const { data: created, error } = await supabase
+      .from('workspaces').insert({ user_id: u.id, name }).select().single()
+    if (!error && created) {
+      await supabase.from('workspace_domains').insert({
+        workspace_id: created.id,
+        domain:       emailDomain,
+        is_master:    true,
+      })
+      setWorkspace(created)
+      setIsMaster(true)
+      return created
+    }
+    setWorkspace(null)
+    return null
   }
 
   async function signInWithGoogle() {
