@@ -217,6 +217,12 @@ export default function StudyDetail() {
     const setUploading = key === 'banner_url' ? setUploadingBanner : setUploadingLogo
     setUploading(true)
     try {
+      // Ensure the storage bucket exists (creates it if missing)
+      const bucketRes = await fetch('/api/storage', { method: 'POST' })
+      if (!bucketRes.ok) {
+        const { error } = await bucketRes.json()
+        throw new Error(error || 'Could not create storage bucket')
+      }
       const ext  = file.name.split('.').pop()
       const path = `${workspace.id}/${form.id}/${key}.${ext}`
       const { error: upErr } = await supabase.storage
@@ -226,7 +232,7 @@ export default function StudyDetail() {
       const { data: { publicUrl } } = supabase.storage.from('form-assets').getPublicUrl(path)
       await saveForm({ [key]: publicUrl })
     } catch (e) {
-      toast({ title: 'Upload failed', description: 'Create a public "form-assets" bucket in Supabase Storage first. ' + e.message, variant: 'destructive' })
+      toast({ title: 'Upload failed', description: e.message, variant: 'destructive' })
     }
     setUploading(false)
   }
