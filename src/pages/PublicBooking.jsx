@@ -102,7 +102,7 @@ export default function PublicBooking() {
   const handleBooking = async () => {
     setSubmitting(true); setError('')
     try {
-      const res = await submitPublicForm({ studySlug, formId: activeForm?.id, answers, slotId: selectedSlot })
+      const res = await submitPublicForm({ studySlug, formId: activeForm?.id, answers, startsAt: selectedSlot, durationMinutes: duration })
       if (res.error) throw new Error(res.error)
       setStep('done')
     } catch (e) { setError(e.message) }
@@ -259,10 +259,10 @@ export default function PublicBooking() {
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))', gap: 10, marginBottom: 20 }}>
                 {daySlots.map(slot => {
-                  const sel = selectedSlot === slot.id
+                  const sel = selectedSlot === slot.starts_at
                   return (
                     <button key={slot.id} type="button"
-                      onClick={() => setSelectedSlot(slot.id)}
+                      onClick={() => setSelectedSlot(slot.starts_at)}
                       style={{
                         padding:'14px 8px', borderRadius:10, fontFamily:'inherit',
                         border:`1.5px solid ${sel ? brandColor : '#e5e7eb'}`,

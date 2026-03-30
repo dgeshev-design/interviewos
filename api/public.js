@@ -1,5 +1,65 @@
 // Consolidated public handler: /api/public?action=get-study|submit
 
+// Compute available slots dynamically from the availability rule,
+// subtracting GCal blocks and already-booked sessions.
+function computeSlots(rule, gcalBlocks, bookedSlots, bookingConfig) {
+  if (!rule) return []
+  const { days_of_week, time_from, time_to, duration_minutes, buffer_minutes, timezone_offset } = rule
+  const tzOff = parseInt(timezone_offset || 0, 10)
+  const dur   = parseInt(duration_minutes, 10) || 60
+  const buf   = parseInt(buffer_minutes,   10) || 0
+  const step  = dur + buf
+
+  // Convert admin local time → UTC for slot generation
+  const [fH, fM] = time_from.split(':').map(Number)
+  const [tH, tM] = time_to.split(':').map(Number)
+  const fromUTCMin = ((fH * 60 + fM + tzOff) % 1440 + 1440) % 1440
+  const toUTCMin   = ((tH * 60 + tM + tzOff) % 1440 + 1440) % 1440
+  const fromUTCH = Math.floor(fromUTCMin / 60), fromUTCM = fromUTCMin % 60
+  const toUTCH   = Math.floor(toUTCMin   / 60), toUTCM   = toUTCMin   % 60
+
+  const now = new Date()
+  const cfg = bookingConfig || {}
+
+  // Determine window
+  let daysAhead = parseInt(cfg.days_ahead || 30, 10)
+  const cur = new Date()
+  cur.setUTCHours(0, 0, 0, 0)
+  if (cfg.date_from) { const df = new Date(cfg.date_from); if (df > cur) { cur.setTime(df.getTime()); cur.setUTCHours(0,0,0,0) } }
+  if (cfg.date_to)   { const dt = new Date(cfg.date_to); daysAhead = Math.min(daysAhead, Math.ceil((dt - cur) / 86400000) + 1) }
+  const windowEnd = new Date(cur.getTime() + daysAhead * 86400000)
+
+  const busy = [...gcalBlocks, ...bookedSlots]
+  const slots = []
+
+  while (cur <= windowEnd) {
+    if ((days_of_week || [1,2,3,4,5]).includes(cur.getUTCDay())) {
+      const dayStart = new Date(cur); dayStart.setUTCHours(fromUTCH, fromUTCM, 0, 0)
+      const dayEnd   = new Date(cur); dayEnd.setUTCHours(toUTCH,   toUTCM,   0, 0)
+      let s = new Date(dayStart)
+      while (s.getTime() + dur * 60000 <= dayEnd.getTime()) {
+        const slotEnd = new Date(s.getTime() + dur * 60000)
+        if (slotEnd > now) {
+          const blocked = busy.some(b => new Date(b.starts_at) < slotEnd && new Date(b.ends_at) > s)
+          if (!blocked) {
+            slots.push({
+              id:               `v_${s.getTime()}`,
+              starts_at:        s.toISOString(),
+              ends_at:          slotEnd.toISOString(),
+              duration_minutes: dur,
+              available:        true,
+              is_gcal_block:    false,
+            })
+          }
+        }
+        s = new Date(s.getTime() + step * 60000)
+      }
+    }
+    cur.setUTCDate(cur.getUTCDate() + 1)
+  }
+  return slots
+}
+
 export default async function handler(req, res) {
   const SB_URL = process.env.VITE_SUPABASE_URL
   const SB_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -18,12 +78,31 @@ export default async function handler(req, res) {
       const studies = await sr.json()
       if (!studies.length) return res.status(404).json({ error: 'Study not found or not active.' })
       const study = studies[0]
-      const fr = await fetch(`${SB_URL}/rest/v1/forms?study_id=eq.${study.id}&is_active=eq.true&select=*`, { headers: hdrs })
+
+      const [fr, rr] = await Promise.all([
+        fetch(`${SB_URL}/rest/v1/forms?study_id=eq.${study.id}&is_active=eq.true&select=*`, { headers: hdrs }),
+        fetch(`${SB_URL}/rest/v1/availability_rules?workspace_id=eq.${study.workspace_id}&select=*`, { headers: hdrs }),
+      ])
       const forms = await fr.json()
-      const now = new Date().toISOString()
-      const future = new Date(Date.now() + 30 * 86400000).toISOString()
-      const slotR = await fetch(`${SB_URL}/rest/v1/slots?workspace_id=eq.${study.workspace_id}&available=eq.true&is_gcal_block=eq.false&starts_at=gte.${now}&starts_at=lte.${future}&order=starts_at.asc&limit=30`, { headers: hdrs })
-      const slots = await slotR.json()
+      const rules = await rr.json()
+      const rule  = rules[0] || null
+      const activeForm    = forms.find(f => f.is_active) || forms[0] || null
+      const bookingConfig = activeForm?.booking_config || {}
+
+      // Determine look-ahead window (default 30 days, max 90)
+      const daysAhead = parseInt(bookingConfig.days_ahead || 30, 10)
+      const now    = new Date().toISOString()
+      const future = new Date(Date.now() + daysAhead * 86400000).toISOString()
+
+      // Fetch GCal blocks + booked sessions in window
+      const [gcalR, bookedR] = await Promise.all([
+        fetch(`${SB_URL}/rest/v1/slots?workspace_id=eq.${study.workspace_id}&is_gcal_block=eq.true&starts_at=gte.${now}&starts_at=lte.${future}&select=starts_at,ends_at`, { headers: hdrs }),
+        fetch(`${SB_URL}/rest/v1/slots?workspace_id=eq.${study.workspace_id}&available=eq.false&is_gcal_block=eq.false&starts_at=gte.${now}&starts_at=lte.${future}&select=starts_at,ends_at`, { headers: hdrs }),
+      ])
+      const gcalBlocks  = await gcalR.json()
+      const bookedSlots = await bookedR.json()
+
+      const slots = computeSlots(rule, gcalBlocks, bookedSlots, bookingConfig)
       return res.status(200).json({ study, forms, slots })
     } catch (e) { return res.status(500).json({ error: e.message }) }
   }
@@ -31,7 +110,7 @@ export default async function handler(req, res) {
   // ── submit ───────────────────────────────────────────────────────────────
   if (action === 'submit') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { studySlug, formId, answers, slotId } = req.body
+    const { studySlug, formId, answers, startsAt, durationMinutes } = req.body
     if (!studySlug || !answers) return res.status(400).json({ error: 'Missing fields' })
     try {
       const sr = await fetch(`${SB_URL}/rest/v1/studies?slug=eq.${encodeURIComponent(studySlug)}&select=*`, { headers: hdrs })
@@ -40,10 +119,43 @@ export default async function handler(req, res) {
       const study = studies[0]
 
       let slot = null
-      if (slotId) {
-        const slotR = await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slotId}&select=*`, { headers: hdrs })
-        const slots = await slotR.json()
-        slot = slots[0] || null
+      if (startsAt) {
+        const dur    = parseInt(durationMinutes, 10) || 60
+        const slotEnd = new Date(new Date(startsAt).getTime() + dur * 60000).toISOString()
+
+        // Check for booking conflicts (race condition guard)
+        const conflictR = await fetch(
+          `${SB_URL}/rest/v1/slots?workspace_id=eq.${study.workspace_id}&available=eq.false&is_gcal_block=eq.false&starts_at=lt.${slotEnd}&ends_at=gt.${startsAt}&select=id`,
+          { headers: hdrs }
+        )
+        const conflicts = await conflictR.json()
+        if (conflicts.length) return res.status(409).json({ error: 'This slot was just booked. Please choose another time.' })
+
+        // Also check GCal blocks
+        const gcalConflictR = await fetch(
+          `${SB_URL}/rest/v1/slots?workspace_id=eq.${study.workspace_id}&is_gcal_block=eq.true&starts_at=lt.${slotEnd}&ends_at=gt.${startsAt}&select=id`,
+          { headers: hdrs }
+        )
+        const gcalConflicts = await gcalConflictR.json()
+        if (gcalConflicts.length) return res.status(409).json({ error: 'This time is no longer available.' })
+
+        // Insert the booked slot
+        const slotInsR = await fetch(`${SB_URL}/rest/v1/slots`, {
+          method: 'POST',
+          headers: { ...hdrs, 'Prefer': 'return=representation' },
+          body: JSON.stringify({
+            workspace_id:     study.workspace_id,
+            study_id:         study.id,
+            starts_at:        startsAt,
+            ends_at:          slotEnd,
+            duration_minutes: dur,
+            available:        false,
+            is_gcal_block:    false,
+            meet_link:        '',
+          }),
+        })
+        const slotData = await slotInsR.json()
+        slot = slotData[0] || null
       }
 
       // Fetch form fields to resolve field IDs → labels/types
@@ -53,8 +165,8 @@ export default async function handler(req, res) {
         const [fm] = await fmR.json()
         formFields = fm?.fields || []
       }
-      const byType  = (type)    => { const f = formFields.find(f => f.type === type);                           return f ? (answers[f.id] || '') : '' }
-      const byLabel = (pattern) => { const f = formFields.find(f => f.label?.toLowerCase().includes(pattern));  return f ? (answers[f.id] || '') : '' }
+      const byType  = (type)    => { const f = formFields.find(f => f.type === type);                          return f ? (answers[f.id] || '') : '' }
+      const byLabel = (pattern) => { const f = formFields.find(f => f.label?.toLowerCase().includes(pattern)); return f ? (answers[f.id] || '') : '' }
       const name  = byLabel('name')  || Object.values(answers)[0] || 'Unknown'
       const email = byType('email')  || byLabel('email')
       const phone = byType('tel')    || byLabel('phone')
@@ -67,15 +179,18 @@ export default async function handler(req, res) {
       const participant = parts[0]
       if (!participant) return res.status(500).json({ error: 'Failed to create participant' })
 
+      // Link participant to slot
       if (slot) {
-        await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slotId}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ available: false, participant_id: participant.id }) })
+        await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slot.id}`, {
+          method: 'PATCH', headers: hdrs,
+          body: JSON.stringify({ participant_id: participant.id }),
+        })
       }
 
-      // Try to create calendar event + get meet link (inline — no self-referencing HTTP)
+      // Try to create Google Calendar event
       let meetLink = ''
       if (slot) {
         try {
-          // Fetch google token
           const tokR = await fetch(`${SB_URL}/rest/v1/google_tokens?workspace_id=eq.${study.workspace_id}&select=*`, { headers: hdrs })
           const tokens = await tokR.json()
           if (tokens.length) {
@@ -90,7 +205,7 @@ export default async function handler(req, res) {
             }
             const gcalEmail = tokens[0].email
             const start = new Date(slot.starts_at)
-            const end   = new Date(start.getTime() + (slot.duration_minutes || 60) * 60000)
+            const end   = new Date(start.getTime() + slot.duration_minutes * 60000)
             const attendees = [{ email: gcalEmail }]
             if (email) attendees.push({ email, displayName: name })
             const cr = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all', {
@@ -102,10 +217,8 @@ export default async function handler(req, res) {
             if (cr.ok) {
               meetLink = calData.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri || ''
               const gcalEventId = calData.id || ''
-              const slotPatch = { gcal_event_id: gcalEventId }
-              if (meetLink) slotPatch.meet_link = meetLink
               await fetch(`${SB_URL}/rest/v1/participants?id=eq.${participant.id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ meet_link: meetLink }) })
-              await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slotId}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify(slotPatch) })
+              await fetch(`${SB_URL}/rest/v1/slots?id=eq.${slot.id}`, { method: 'PATCH', headers: hdrs, body: JSON.stringify({ gcal_event_id: gcalEventId, ...(meetLink ? { meet_link: meetLink } : {}) }) })
             }
           }
         } catch {}

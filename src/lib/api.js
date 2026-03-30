@@ -24,3 +24,6 @@ export const saveGoogleToken = (data) => post('/api/calendar?action=save-token',
 
 export const getPublicStudy   = (slug) => get(`/api/public?action=get-study&slug=${encodeURIComponent(slug)}`)
 export const submitPublicForm = (data) => post('/api/public?action=submit',      data)
+
+export const getAvailabilityRule  = (workspaceId) => get(`/api/calendar?action=get-rule&workspaceId=${workspaceId}`)
+export const saveAvailabilityRule = (data)        => post('/api/calendar?action=save-rule', data)

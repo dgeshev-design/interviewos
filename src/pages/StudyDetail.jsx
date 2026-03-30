@@ -115,6 +115,7 @@ export default function StudyDetail() {
   const [uploadingLogo, setUploadingLogo]     = useState(false)
   const bannerRef = useRef()
   const logoRef   = useRef()
+  const [bookingConfig, setBookingConfig] = useState(form?.booking_config || {})
 
   // ── Load / create form ───────────────────────────────────────────────────
   const loadForm = useCallback(async () => {
@@ -159,6 +160,14 @@ export default function StudyDetail() {
       toast({ title: 'Saved', variant: 'success' })
     }
     setSavingForm(false)
+  }
+
+  useEffect(() => { if (form) setBookingConfig(form.booking_config || {}) }, [form?.id])
+
+  const saveBookingConfig = async (cfg) => {
+    await saveForm({ booking_config: cfg })
+    setBookingConfig(cfg)
+    toast({ title: 'Booking settings saved', variant: 'success' })
   }
 
   // ── Field helpers ────────────────────────────────────────────────────────
@@ -497,6 +506,75 @@ export default function StudyDetail() {
                     </Button>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Booking settings */}
+            <Card className="shadow-none">
+              <CardContent className="p-6 space-y-5">
+                <div>
+                  <h3 className="font-semibold text-sm mb-0.5">Booking</h3>
+                  <p className="text-xs text-muted-foreground">Control how far ahead participants can book and which hours are shown.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">How far ahead can participants book?</Label>
+                  <div className="flex gap-2 items-center">
+                    <Select
+                      value={bookingConfig.visibility || 'days'}
+                      onValueChange={v => {
+                        const cfg = { ...bookingConfig, visibility: v }
+                        setBookingConfig(cfg)
+                      }}
+                    >
+                      <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="days">Next N days</SelectItem>
+                        <SelectItem value="today">Today only</SelectItem>
+                        <SelectItem value="tomorrow">Today + tomorrow</SelectItem>
+                        <SelectItem value="range">Custom date range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {(!bookingConfig.visibility || bookingConfig.visibility === 'days') && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="1" max="365"
+                          className="w-20 h-9 text-sm"
+                          value={bookingConfig.days_ahead || 30}
+                          onChange={e => setBookingConfig(c => ({ ...c, days_ahead: parseInt(e.target.value) || 30 }))}
+                        />
+                        <span className="text-sm text-muted-foreground">days</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {bookingConfig.visibility === 'range' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">From date</Label>
+                      <Input type="date" value={bookingConfig.date_from || ''} onChange={e => setBookingConfig(c => ({ ...c, date_from: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">To date</Label>
+                      <Input type="date" value={bookingConfig.date_to || ''} onChange={e => setBookingConfig(c => ({ ...c, date_to: e.target.value }))} />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Hour visibility override <span className="text-muted-foreground font-normal">(optional — leave blank to use availability rule hours)</span></Label>
+                  <div className="flex items-center gap-2">
+                    <Input type="time" className="w-32 h-9 text-sm" value={bookingConfig.hour_from || ''} placeholder="09:00"
+                      onChange={e => setBookingConfig(c => ({ ...c, hour_from: e.target.value }))} />
+                    <span className="text-sm text-muted-foreground">to</span>
+                    <Input type="time" className="w-32 h-9 text-sm" value={bookingConfig.hour_to || ''} placeholder="17:00"
+                      onChange={e => setBookingConfig(c => ({ ...c, hour_to: e.target.value }))} />
+                  </div>
+                </div>
+
+                <Button size="sm" onClick={() => saveBookingConfig(bookingConfig)}>Save booking settings</Button>
               </CardContent>
             </Card>
 

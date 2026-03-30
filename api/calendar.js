@@ -188,5 +188,43 @@ export default async function handler(req, res) {
     } catch (e) { return res.status(500).json({ error: e.message }) }
   }
 
+  // ── get-rule ────────────────────────────────────────────────────────────
+  if (action === 'get-rule') {
+    if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
+    const wid = url.searchParams.get('workspaceId')
+    if (!wid) return res.status(400).json({ error: 'Missing workspaceId' })
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/availability_rules?workspace_id=eq.${wid}&select=*`, { headers: hdrs })
+      const rows = await r.json()
+      return res.status(200).json(rows[0] || null)
+    } catch (e) { return res.status(500).json({ error: e.message }) }
+  }
+
+  // ── save-rule ────────────────────────────────────────────────────────────
+  if (action === 'save-rule') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+    const { workspaceId, daysOfWeek, timeFrom, timeTo, durationMinutes, bufferMinutes, timezoneOffset } = req.body
+    if (!workspaceId) return res.status(400).json({ error: 'Missing workspaceId' })
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/availability_rules`, {
+        method: 'POST',
+        headers: { ...hdrs, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify({
+          workspace_id:     workspaceId,
+          days_of_week:     daysOfWeek     || [1,2,3,4,5],
+          time_from:        timeFrom        || '09:00',
+          time_to:          timeTo          || '17:00',
+          duration_minutes: parseInt(durationMinutes, 10) || 60,
+          buffer_minutes:   parseInt(bufferMinutes,   10) || 0,
+          timezone_offset:  parseInt(timezoneOffset   || 0, 10),
+          updated_at:       new Date().toISOString(),
+        }),
+      })
+      const d = await r.json()
+      if (!r.ok) return res.status(r.status).json({ error: d.message || 'Save failed' })
+      return res.status(200).json(Array.isArray(d) ? d[0] : d)
+    } catch (e) { return res.status(500).json({ error: e.message }) }
+  }
+
   return res.status(400).json({ error: 'Unknown action' })
 }
