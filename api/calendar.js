@@ -92,8 +92,9 @@ export default async function handler(req, res) {
         .filter(e => (e.start?.dateTime || e.start?.date) && e.status !== 'cancelled' && !e.description?.includes('InterviewOS session'))
         .map(e => {
           const isAllDay = !e.start.dateTime
-          const starts_at = isAllDay ? `${e.start.date}T00:00:00Z` : e.start.dateTime
-          const ends_at   = isAllDay ? `${e.end.date}T00:00:00Z`   : e.end.dateTime
+          // All-day events: use local midnight (no Z) so parseISO treats them as local time
+          const starts_at = isAllDay ? `${e.start.date}T00:00:00` : e.start.dateTime
+          const ends_at   = isAllDay ? `${e.end.date}T00:00:00`   : e.end.dateTime
           const duration_minutes = Math.round((new Date(ends_at) - new Date(starts_at)) / 60000)
           return { workspace_id: workspaceId, starts_at, ends_at, duration_minutes, available: false, is_gcal_block: true, gcal_event_id: e.id, meet_link: '', study_id: null }
         })

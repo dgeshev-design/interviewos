@@ -18,6 +18,7 @@ import { formatDateTime, cn } from '@/lib/utils'
 import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { PHONE_CODES } from '@/lib/phoneCodes'
+import NotionEditor from '@/components/ui/notion-editor'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const EMPTY_P = { name: '', email: '', phone: '', age_group: '', location: '', status: 'booked', booked_at: '', meet_link: '', notes: '' }
@@ -62,6 +63,23 @@ export default function StudyDetail() {
   const [saving, setSaving]   = useState(false)
   const [copied, setCopied]           = useState(false)
   const [copiedReport, setCopiedReport] = useState(false)
+
+  // Summary tab
+  const [synthesis, setSynthesis]       = useState('')
+  const [savingSynthesis, setSavingSynthesis] = useState(false)
+  const synthesisTimer = useRef(null)
+  useEffect(() => { if (study?.synthesis != null) setSynthesis(study.synthesis) }, [study?.id])
+  const saveSynthesis = async (val) => {
+    setSavingSynthesis(true)
+    const { error } = await supabase.from('studies').update({ synthesis: val }).eq('id', studyId)
+    if (error) toast({ title: 'Save failed', description: error.message, variant: 'destructive' })
+    setSavingSynthesis(false)
+  }
+  const autoSaveSynthesis = (val) => {
+    setSynthesis(val)
+    clearTimeout(synthesisTimer.current)
+    synthesisTimer.current = setTimeout(() => saveSynthesis(val), 800)
+  }
 
   // Form builder
   const [form, setForm]               = useState(null)
@@ -131,7 +149,8 @@ export default function StudyDetail() {
   }
 
   // ── Field helpers ────────────────────────────────────────────────────────
-  const stepCount  = form ? Math.max(1, ...(form.fields || []).map(f => f.step || 1)) : 1
+  // Derive stepCount from both step_titles (added but no fields yet) and actual field step numbers
+  const stepCount  = form ? Math.max(1, (form.step_titles?.length || 0) + 1, ...(form.fields || []).map(f => f.step || 1)) : 1
   const stepTitles = form?.step_titles || []
 
   const addStep = async () => {
@@ -315,7 +334,7 @@ export default function StudyDetail() {
 
       {/* Tabs */}
       <div className="flex rounded-md border overflow-hidden text-xs mb-6 w-fit">
-        {[['participants','Participants'],['form','Form builder']].map(([t, label]) => (
+        {[['participants','Participants'],['form','Form builder'],['summary','Summary']].map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-4 py-2 transition-colors', tab === t ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
             {label}
@@ -407,6 +426,26 @@ export default function StudyDetail() {
             </CardContent>
           </Card>
         </>
+      )}
+
+      {/* ── SUMMARY TAB ──────────────────────────────────────────────────── */}
+      {tab === 'summary' && (
+        <Card className="shadow-none">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">Study summary</CardTitle>
+              {savingSynthesis && <span className="text-xs text-muted-foreground">Saving…</span>}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">This summary appears at the top of your shareable report.</p>
+          </CardHeader>
+          <CardContent>
+            <NotionEditor
+              value={synthesis}
+              onChange={autoSaveSynthesis}
+              placeholder="Write a synthesis or summary of this study…"
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* ── FORM BUILDER TAB ─────────────────────────────────────────────── */}
@@ -575,6 +614,19 @@ export default function StudyDetail() {
                   </div>
                 </div>
 
+                {/* Step counter toggle */}
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="rounded"
+                      checked={bookingConfig.show_step_counter !== false}
+                      onChange={e => setBookingConfig(c => ({ ...c, show_step_counter: e.target.checked }))}
+                    />
+                    <span className="text-xs text-muted-foreground">Show step progress bar to participants</span>
+                  </label>
+                </div>
+
                 <Button size="sm" onClick={() => saveBookingConfig(bookingConfig)}>Save booking settings</Button>
               </CardContent>
             </Card>
@@ -596,48 +648,44 @@ export default function StudyDetail() {
                   </div>
                 </div>
 
-                {/* Step tabs */}
-                {stepCount > 1 && (
-                  <div className="flex items-center gap-1 mt-3 flex-wrap">
-                    {Array.from({ length: stepCount }, (_, i) => i + 1).map(s => (
-                      <div key={s} className="flex items-center gap-1">
-                        <button
-                          onClick={() => setActiveStep(s)}
-                          className={cn(
-                            'px-3 py-1 rounded-md text-xs font-medium transition-colors',
-                            activeStep === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                          )}
-                        >
-                          {(form.step_titles?.[s - 1]) || `Step ${s}`}
-                        </button>
-                        {s > 1 && activeStep === s && (
-                          <button onClick={() => removeStep(s)} className="text-muted-foreground hover:text-destructive">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                {/* Step tabs — always visible so you can add steps before adding fields */}
+                <div className="flex items-center gap-1 mt-3 flex-wrap">
+                  {Array.from({ length: stepCount }, (_, i) => i + 1).map(s => (
+                    <div key={s} className="flex items-center gap-1">
+                      <button
+                        onClick={() => setActiveStep(s)}
+                        className={cn(
+                          'px-3 py-1 rounded-md text-xs font-medium transition-colors',
+                          activeStep === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'
                         )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      >
+                        {s === 1 ? (form.step_titles?.[0] || 'Step 1') : (form.step_titles?.[s - 1] || `Step ${s}`)}
+                      </button>
+                      {s > 1 && activeStep === s && (
+                        <button onClick={() => removeStep(s)} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
 
                 {/* Step title editor */}
-                {stepCount > 1 && (
-                  <input
-                    className="mt-2 w-full text-xs border rounded px-2 py-1 text-muted-foreground focus:outline-none focus:border-primary"
-                    placeholder={`Step ${activeStep} title (optional)`}
-                    value={form.step_titles?.[activeStep - 1] || ''}
-                    onChange={e => {
-                      const titles = [...(form.step_titles || Array(stepCount).fill(''))]
-                      titles[activeStep - 1] = e.target.value
-                      setForm(f => ({ ...f, step_titles: titles }))
-                    }}
-                    onBlur={e => {
-                      const titles = [...(form.step_titles || Array(stepCount).fill(''))]
-                      titles[activeStep - 1] = e.target.value
-                      saveForm({ step_titles: titles })
-                    }}
-                  />
-                )}
+                <input
+                  className="mt-2 w-full text-xs border rounded px-2 py-1 text-muted-foreground focus:outline-none focus:border-primary"
+                  placeholder={`Step ${activeStep} title (optional)`}
+                  value={form.step_titles?.[activeStep - 1] || ''}
+                  onChange={e => {
+                    const titles = [...(form.step_titles || Array(stepCount).fill(''))]
+                    titles[activeStep - 1] = e.target.value
+                    setForm(f => ({ ...f, step_titles: titles }))
+                  }}
+                  onBlur={e => {
+                    const titles = [...(form.step_titles || Array(stepCount).fill(''))]
+                    titles[activeStep - 1] = e.target.value
+                    saveForm({ step_titles: titles })
+                  }}
+                />
               </CardHeader>
               <CardContent>
                 {(() => {

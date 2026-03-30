@@ -57,14 +57,25 @@ export default function Calendar() {
     return d >= weekStart && d < addDays(weekStart, 7)
   })
 
-  // Parse rule hours for the availability band (displayed in admin local time — rule.time_from is local)
+  // Parse rule hours for the availability band, correcting for timezone drift.
+  // rule.time_from is stored in admin's local time at save time; timezone_offset = UTC - local (minutes) at save time.
+  // Convert through UTC → current local so the band stays correct across DST / TZ changes.
+  const toCurrentLocal = (timeStr) => {
+    if (!timeStr || !rule) return null
+    const [h, m] = timeStr.split(':').map(Number)
+    const savedTzOff   = parseInt(rule.timezone_offset || 0, 10) // UTC - saved-local (mins)
+    const currentTzOff = new Date().getTimezoneOffset()           // UTC - current-local (mins)
+    const utcMins  = h * 60 + m + savedTzOff
+    const localMins = utcMins - currentTzOff
+    return ((localMins % 1440) + 1440) % 1440 // wrap to 0-1439
+  }
   const ruleBandStart = rule ? (() => {
-    const [h, m] = rule.time_from.split(':').map(Number)
-    return (h - GRID_START + m / 60) * HOUR_PX
+    const mins = toCurrentLocal(rule.time_from)
+    return (mins / 60 - GRID_START) * HOUR_PX
   })() : null
   const ruleBandEnd = rule ? (() => {
-    const [h, m] = rule.time_to.split(':').map(Number)
-    return (h - GRID_START + m / 60) * HOUR_PX
+    const mins = toCurrentLocal(rule.time_to)
+    return (mins / 60 - GRID_START) * HOUR_PX
   })() : null
   const ruleBandHeight = ruleBandStart !== null ? ruleBandEnd - ruleBandStart : 0
 

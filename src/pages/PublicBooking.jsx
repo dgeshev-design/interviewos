@@ -328,8 +328,8 @@ export default function PublicBooking() {
         <div style={s.h2}>{data?.study?.name || 'Research session'}</div>
         <p style={s.sub}>{data?.study?.description || 'Complete this short form to register for a research session.'}</p>
 
-        {/* Step indicator */}
-        {stepCount > 1 && (
+        {/* Step indicator — only when multi-step AND show_step_counter not explicitly disabled */}
+        {stepCount > 1 && (data?.bookingConfig?.show_step_counter !== false) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20 }}>
             {Array.from({ length: stepCount }, (_, i) => i + 1).map(n => (
               <div key={n} style={{

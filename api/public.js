@@ -78,7 +78,7 @@ function computeSlots(rule, gcalBlocks, bookedSlots, bookingConfig) {
 
       while (s.getTime() + dur * 60000 <= dayEnd.getTime()) {
         const slotEnd = new Date(s.getTime() + dur * 60000)
-        if (slotEnd > now) {
+        if (s >= now) {
           const blocked = busy.some(b => new Date(b.starts_at) < slotEnd && new Date(b.ends_at) > s)
           if (!blocked) {
             slots.push({
