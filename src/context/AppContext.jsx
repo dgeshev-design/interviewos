@@ -10,11 +10,13 @@ const ALLOWED_DOMAINS = (import.meta.env.VITE_ALLOWED_DOMAINS || 'betty.com')
 function getEmailDomain(email) { return email?.split('@')[1]?.toLowerCase() || '' }
 
 export function AppProvider({ children }) {
-  const [user, setUser]           = useState(null)
-  const [workspace, setWorkspace] = useState(null)
-  const [isMaster, setIsMaster]   = useState(false)
-  const [loading, setLoading]     = useState(true)
-  const [authError, setAuthError] = useState(null)
+  const [user, setUser]               = useState(null)
+  const [workspace, setWorkspace]     = useState(null)   // active workspace
+  const [ownWorkspace, setOwnWorkspace] = useState(null) // user's own workspace
+  const [workspaces, setWorkspaces]   = useState([])     // all accessible workspaces
+  const [canEdit, setCanEdit]         = useState(true)   // false when viewing a shared workspace as viewer
+  const [loading, setLoading]         = useState(true)
+  const [authError, setAuthError]     = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -23,7 +25,7 @@ export function AppProvider({ children }) {
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) handleUser(session.user, session)
-      else { setUser(null); setWorkspace(null); setIsMaster(false); setLoading(false) }
+      else { setUser(null); setWorkspace(null); setOwnWorkspace(null); setWorkspaces([]); setCanEdit(true); setLoading(false) }
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -42,7 +44,6 @@ export function AppProvider({ children }) {
       try {
         await saveGoogleToken({
           workspaceId:  ws.id,
-          userId:       u.id,
           accessToken:  session.provider_token,
           refreshToken: session.provider_refresh_token || null,
           expiresIn:    3600,
@@ -54,55 +55,55 @@ export function AppProvider({ children }) {
   }
 
   async function resolveWorkspace(u) {
-    const hostname    = window.location.hostname
-    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
-    const emailDomain = getEmailDomain(u.email)
-
-    async function lookupByDomain(domain) {
-      const { data: dr } = await supabase
-        .from('workspace_domains')
-        .select('workspace_id, is_master')
-        .eq('domain', domain)
-        .maybeSingle()
-      if (!dr?.workspace_id) return null
-      const { data: ws } = await supabase
-        .from('workspaces').select('*').eq('id', dr.workspace_id).single()
-      if (!ws) return null
-      setWorkspace(ws)
-      setIsMaster(!!dr.is_master)
-      return ws
+    // 1. Get or create the user's own workspace
+    let { data: own, error } = await supabase
+      .from('workspaces').select('*').eq('user_id', u.id).single()
+    if (error?.code === 'PGRST116') {
+      const name = u.user_metadata?.full_name
+        ? `${u.user_metadata.full_name}'s Workspace`
+        : 'My Workspace'
+      const { data: created } = await supabase
+        .from('workspaces').insert({ user_id: u.id, name }).select().single()
+      own = created
     }
+    setOwnWorkspace(own)
 
-    // 1. Try hostname first (only on real domains, not localhost)
-    if (!isLocalhost) {
-      const ws = await lookupByDomain(hostname)
-      if (ws) return ws
-    }
+    // 2. Claim any pending invitations for this email
+    await supabase
+      .from('workspace_members')
+      .update({ user_id: u.id })
+      .eq('invited_email', u.email)
+      .is('user_id', null)
 
-    // 2. Try email domain — works on localhost and as fallback on prod
-    //    This is the key: all users with same email domain share a workspace
-    const ws2 = await lookupByDomain(emailDomain)
-    if (ws2) return ws2
+    // 3. Load all workspaces this user is a member of
+    const { data: memberships } = await supabase
+      .from('workspace_members')
+      .select('role, workspace_id, workspaces(*)')
+      .eq('user_id', u.id)
 
-    // 3. Create a new workspace (first user for this email domain)
-    //    and register the email domain so future users auto-join
-    const name = u.user_metadata?.full_name
-      ? `${u.user_metadata.full_name}'s Workspace`
-      : `${emailDomain} Workspace`
-    const { data: created, error } = await supabase
-      .from('workspaces').insert({ user_id: u.id, name }).select().single()
-    if (!error && created) {
-      await supabase.from('workspace_domains').insert({
-        workspace_id: created.id,
-        domain:       emailDomain,
-        is_master:    true,
-      })
-      setWorkspace(created)
-      setIsMaster(true)
-      return created
-    }
-    setWorkspace(null)
-    return null
+    const shared = (memberships || [])
+      .filter(m => m.workspaces && m.workspace_id !== own?.id)
+      .map(m => ({ ...m.workspaces, _memberRole: m.role }))
+
+    const all = own ? [own, ...shared] : shared
+    setWorkspaces(all)
+
+    // 4. Restore last active workspace (if still accessible)
+    const savedId = localStorage.getItem('activeWorkspaceId')
+    const active  = all.find(w => w.id === savedId) || own || all[0] || null
+    const role    = active?.id === own?.id ? null : shared.find(s => s.id === active?.id)?._memberRole || null
+    setWorkspace(active)
+    setCanEdit(!role || role === 'editor')
+    return active
+  }
+
+  function switchWorkspace(id) {
+    const target = workspaces.find(w => w.id === id)
+    if (!target) return
+    const role = target.id === ownWorkspace?.id ? null : target._memberRole || null
+    setWorkspace(target)
+    setCanEdit(!role || role === 'editor')
+    localStorage.setItem('activeWorkspaceId', id)
   }
 
   async function signInWithGoogle() {
@@ -119,11 +120,11 @@ export function AppProvider({ children }) {
 
   async function signOut() {
     await supabase.auth.signOut()
-    setUser(null); setWorkspace(null); setIsMaster(false)
+    setUser(null); setWorkspace(null); setOwnWorkspace(null); setWorkspaces([]); setCanEdit(true)
   }
 
   return (
-    <AppContext.Provider value={{ user, workspace, isMaster, loading, authError, signInWithGoogle, signOut }}>
+    <AppContext.Provider value={{ user, workspace, ownWorkspace, workspaces, canEdit, loading, authError, signInWithGoogle, signOut, switchWorkspace }}>
       {children}
     </AppContext.Provider>
   )

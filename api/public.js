@@ -179,24 +179,11 @@ export default async function handler(req, res) {
         if (gcalConflicts.length) return res.status(409).json({ error: 'This time is no longer available.' })
 
         // Insert the booked slot
-        // Find the pre-generated available slot to inherit its user_id (the interviewer)
-        const availR = await fetch(
-          `${SB_URL}/rest/v1/slots?workspace_id=eq.${study.workspace_id}&available=eq.true&is_gcal_block=eq.false&starts_at=eq.${encodeURIComponent(startsAt)}&select=id,user_id&limit=1`,
-          { headers: hdrs }
-        )
-        const availSlots = await availR.json()
-        const slotUserId = availSlots[0]?.user_id || null
-        // Delete the pre-generated slot so it's no longer shown as available
-        if (availSlots[0]?.id) {
-          await fetch(`${SB_URL}/rest/v1/slots?id=eq.${availSlots[0].id}`, { method: 'DELETE', headers: hdrs })
-        }
-
         const slotInsR = await fetch(`${SB_URL}/rest/v1/slots`, {
           method: 'POST',
           headers: { ...hdrs, 'Prefer': 'return=representation' },
           body: JSON.stringify({
             workspace_id:     study.workspace_id,
-            user_id:          slotUserId,
             study_id:         study.id,
             starts_at:        startsAt,
             ends_at:          slotEnd,
@@ -247,11 +234,7 @@ export default async function handler(req, res) {
       let meetLink = ''
       if (slot) {
         try {
-          // Use the slot owner's token if available; fall back to any workspace token
-          const tokFilter = slot?.user_id
-            ? `workspace_id=eq.${study.workspace_id}&user_id=eq.${slot.user_id}`
-            : `workspace_id=eq.${study.workspace_id}`
-          const tokR = await fetch(`${SB_URL}/rest/v1/google_tokens?${tokFilter}&select=*`, { headers: hdrs })
+          const tokR = await fetch(`${SB_URL}/rest/v1/google_tokens?workspace_id=eq.${study.workspace_id}&select=*`, { headers: hdrs })
           const tokens = await tokR.json()
           if (tokens.length) {
             let { id: tokenId, access_token, refresh_token: rt, expiry } = tokens[0]

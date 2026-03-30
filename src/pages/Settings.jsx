@@ -13,12 +13,14 @@ import TemplateModal from '@/components/comms/TemplateModal'
 import { TRIGGER_LABELS, applyTemplateVars } from '@/lib/utils'
 import PageHeader from '@/components/layout/PageHeader'
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Globe } from 'lucide-react'
+import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Users } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const CHANNEL_COLORS = { email: 'blue', whatsapp: 'success', sms: 'secondary' }
+const ROLE_LABELS = { viewer: 'Can view', editor: 'Can edit' }
 
 export default function Settings() {
-  const { workspace, user, isMaster, signInWithGoogle } = useApp()
+  const { workspace, ownWorkspace, user, signInWithGoogle } = useApp()
   const { templates, loading: tLoading, add, update, remove } = useTemplates()
   const { toast } = useToast()
 
@@ -30,12 +32,13 @@ export default function Settings() {
   const [gcalEmail, setGcalEmail]           = useState('')
   const [connectingCal, setConnectingCal]   = useState(false)
 
-  // Domains state
-  const [domains, setDomains]           = useState([])
-  const [domainsLoading, setDomainsLoading] = useState(false)
-  const [newDomain, setNewDomain]       = useState('')
-  const [addingDomain, setAddingDomain] = useState(false)
-  const [removingDomain, setRemovingDomain] = useState(null)
+  // Members state
+  const [members, setMembers]           = useState([])
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [inviteEmail, setInviteEmail]   = useState('')
+  const [inviteRole, setInviteRole]     = useState('viewer')
+  const [inviting, setInviting]         = useState(false)
+  const isOwner = workspace?.id === ownWorkspace?.id
 
   // Send-test state
   const [testTemplate, setTestTemplate]     = useState(null) // template being tested
@@ -53,7 +56,6 @@ export default function Settings() {
         try {
           await saveGoogleToken({
             workspaceId:  workspace.id,
-            userId:       session.user?.id || '',
             accessToken:  session.provider_token,
             refreshToken: session.provider_refresh_token || null,
             expiresIn:    3600,
@@ -61,59 +63,58 @@ export default function Settings() {
           })
         } catch {}
       }
-      // Now check gcal status for the current user specifically
+      // Check gcal status
       const { data } = await supabase
         .from('google_tokens')
         .select('email, updated_at')
         .eq('workspace_id', workspace.id)
-        .eq('user_id', user?.id)
         .maybeSingle()
       if (data) { setGcalStatus('connected'); setGcalEmail(data.email || '') }
       else setGcalStatus('missing')
     })
   }, [workspace])
 
-  // Load all domains (master only)
+  // Load members for own workspace
   useEffect(() => {
-    if (!isMaster) return
-    setDomainsLoading(true)
-    supabase.from('workspace_domains').select('*, workspaces(id, name)').order('created_at', { ascending: true })
-      .then(({ data }) => { setDomains(data || []); setDomainsLoading(false) })
-  }, [isMaster])
+    if (!ownWorkspace) return
+    setMembersLoading(true)
+    supabase.from('workspace_members')
+      .select('*')
+      .eq('workspace_id', ownWorkspace.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => { setMembers(data || []); setMembersLoading(false) })
+  }, [ownWorkspace])
 
-  const handleAddDomain = async () => {
-    const d = newDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
-    if (!d) return
-    setAddingDomain(true)
+  const handleInvite = async () => {
+    const email = inviteEmail.trim().toLowerCase()
+    if (!email || !ownWorkspace) return
+    setInviting(true)
     try {
-      // Create a new workspace for this domain
-      const { data: ws, error: wsErr } = await supabase.from('workspaces').insert({ name: d, user_id: user.id }).select().single()
-      if (wsErr) throw new Error(wsErr.message)
-      // Map domain → workspace
-      const { data: row, error: dErr } = await supabase.from('workspace_domains').insert({ workspace_id: ws.id, domain: d, is_master: false }).select('*, workspaces(id, name)').single()
-      if (dErr) throw new Error(dErr.message)
-      setDomains(prev => [...prev, row])
-      setNewDomain('')
-      toast({ title: 'Domain added', description: `${d} is now live with its own workspace.`, variant: 'success' })
+      const { data, error } = await supabase.from('workspace_members').insert({
+        workspace_id: ownWorkspace.id,
+        invited_email: email,
+        invited_by: user.id,
+        role: inviteRole,
+      }).select().single()
+      if (error) throw new Error(error.message)
+      setMembers(prev => [...prev, data])
+      setInviteEmail('')
+      toast({ title: 'Invited', description: `${email} will get access when they log in.`, variant: 'success' })
     } catch (e) {
-      toast({ title: 'Failed to add domain', description: e.message, variant: 'destructive' })
+      toast({ title: 'Failed to invite', description: e.message, variant: 'destructive' })
     }
-    setAddingDomain(false)
+    setInviting(false)
   }
 
-  const handleRemoveDomain = async (row) => {
-    if (row.is_master) return
-    if (!confirm(`Remove ${row.domain}? This will delete its workspace and all data.`)) return
-    setRemovingDomain(row.id)
-    try {
-      // Delete workspace (cascade deletes domain row too)
-      await supabase.from('workspaces').delete().eq('id', row.workspace_id)
-      setDomains(prev => prev.filter(d => d.id !== row.id))
-      toast({ title: 'Domain removed', variant: 'success' })
-    } catch (e) {
-      toast({ title: 'Failed to remove', description: e.message, variant: 'destructive' })
-    }
-    setRemovingDomain(null)
+  const handleChangeRole = async (memberId, role) => {
+    const { data, error } = await supabase.from('workspace_members').update({ role }).eq('id', memberId).select().single()
+    if (!error) setMembers(prev => prev.map(m => m.id === memberId ? data : m))
+  }
+
+  const handleRemoveMember = async (memberId) => {
+    if (!confirm('Remove this person's access?')) return
+    await supabase.from('workspace_members').delete().eq('id', memberId)
+    setMembers(prev => prev.filter(m => m.id !== memberId))
   }
 
   const saveWorkspace = async () => {
@@ -143,7 +144,7 @@ export default function Settings() {
 
   const handleDisconnectGoogle = async () => {
     if (!confirm('Disconnect Google Calendar? Sync will stop working.')) return
-    await supabase.from('google_tokens').delete().eq('workspace_id', workspace.id).eq('user_id', user?.id)
+    await supabase.from('google_tokens').delete().eq('workspace_id', workspace.id)
     setGcalStatus('missing')
     setGcalEmail('')
     toast({ title: 'Disconnected', variant: 'success' })
@@ -280,60 +281,69 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Domains — master only */}
-      {isMaster && (
+      {/* Members — only shown when viewing your own workspace */}
+      {isOwner && (
         <Card className="shadow-none mb-5">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              Domains
+              <Users className="h-4 w-4 text-muted-foreground" />
+              Workspace members
             </CardTitle>
-            <CardDescription>Each domain has its own isolated workspace. Master domains cannot be removed.</CardDescription>
+            <CardDescription>Invite people to your workspace. They'll get access when they log in.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {domainsLoading ? (
+            {membersLoading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : (
+            ) : members.length > 0 ? (
               <div className="space-y-2">
-                {domains.map(row => (
-                  <div key={row.id} className="flex items-center justify-between p-3 rounded-md border">
-                    <div className="flex items-center gap-3">
-                      <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div>
-                        <div className="text-sm font-medium flex items-center gap-2">
-                          {row.domain}
-                          {row.is_master && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 border border-brand-200 font-medium">Master</span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">{row.workspaces?.name}</div>
-                      </div>
+                {members.map(m => (
+                  <div key={m.id} className="flex items-center justify-between p-3 rounded-md border">
+                    <div className="text-sm">
+                      <div className="font-medium">{m.invited_email}</div>
+                      <div className="text-xs text-muted-foreground">{m.user_id ? 'Active' : 'Pending login'}</div>
                     </div>
-                    {!row.is_master && (
-                      <Button
-                        variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive"
-                        disabled={removingDomain === row.id}
-                        onClick={() => handleRemoveDomain(row)}
-                      >
+                    <div className="flex items-center gap-2">
+                      <Select value={m.role} onValueChange={v => handleChangeRole(m.id, v)}>
+                        <SelectTrigger className="h-7 w-[110px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(ROLE_LABELS).map(([v, l]) => (
+                            <SelectItem key={v} value={v} className="text-xs">{l}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => handleRemoveMember(m.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
-                    )}
+                    </div>
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No members yet.</p>
             )}
 
-            {/* Add domain */}
             <div className="flex gap-2 pt-1">
               <Input
-                placeholder="newdomain.com"
-                value={newDomain}
-                onChange={e => setNewDomain(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleAddDomain() }}
+                placeholder="colleague@betty.com"
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleInvite() }}
                 className="flex-1"
               />
-              <Button size="sm" onClick={handleAddDomain} disabled={addingDomain || !newDomain.trim()}>
-                {addingDomain ? 'Adding…' : <><Plus className="h-3.5 w-3.5 mr-1.5" /> Add domain</>}
+              <Select value={inviteRole} onValueChange={setInviteRole}>
+                <SelectTrigger className="h-9 w-[110px] text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ROLE_LABELS).map(([v, l]) => (
+                    <SelectItem key={v} value={v} className="text-sm">{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" onClick={handleInvite} disabled={inviting || !inviteEmail.trim()}>
+                {inviting ? 'Inviting…' : <><Plus className="h-3.5 w-3.5 mr-1.5" /> Invite</>}
               </Button>
             </div>
           </CardContent>

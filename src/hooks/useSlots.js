@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useApp } from '@/context/AppContext'
 
-export function useSlots(studyId = null, userId = null) {
+export function useSlots(studyId = null) {
   const { workspace } = useApp()
   const [slots, setSlots]   = useState([])
   const [loading, setLoading] = useState(true)
@@ -15,11 +15,10 @@ export function useSlots(studyId = null, userId = null) {
       .gte('starts_at', (() => { const d = new Date(); d.setHours(0,0,0,0); return d.toISOString() })())
       .order('starts_at', { ascending: true })
     if (studyId) q = q.eq('study_id', studyId)
-    if (userId)  q = q.eq('user_id', userId)
     const { data } = await q
     setSlots(data || [])
     setLoading(false)
-  }, [workspace, studyId, userId])
+  }, [workspace, studyId])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -29,7 +28,6 @@ export function useSlots(studyId = null, userId = null) {
     const { data, error } = await supabase.from('slots').insert({
       ...s,
       workspace_id: workspace.id,
-      user_id: userId || null,
       ends_at: ends.toISOString(),
       available: true,
       is_gcal_block: false,
