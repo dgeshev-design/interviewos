@@ -18,6 +18,7 @@ import { formatDateTime, cn } from '@/lib/utils'
 import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { PHONE_CODES } from '@/lib/phoneCodes'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const EMPTY_P = { name: '', email: '', phone: '', age_group: '', location: '', status: 'booked', booked_at: '', meet_link: '', notes: '' }
@@ -513,16 +514,16 @@ export default function StudyDetail() {
                 </div>
 
                 {bookingConfig.visibility === 'range' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">From date</Label>
-                      <Input type="date" value={bookingConfig.date_from || ''} onChange={e => setBookingConfig(c => ({ ...c, date_from: e.target.value }))} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">To date</Label>
-                      <Input type="date" value={bookingConfig.date_to || ''} onChange={e => setBookingConfig(c => ({ ...c, date_to: e.target.value }))} />
-                    </div>
-                  </div>
+                  <DateRangePicker
+                    className="w-full"
+                    from={bookingConfig.date_from ? new Date(bookingConfig.date_from) : undefined}
+                    to={bookingConfig.date_to ? new Date(bookingConfig.date_to) : undefined}
+                    onChange={({ from, to }) => setBookingConfig(c => ({
+                      ...c,
+                      date_from: from ? from.toISOString().slice(0, 10) : '',
+                      date_to:   to   ? to.toISOString().slice(0, 10)   : '',
+                    }))}
+                  />
                 )}
 
                 <div className="space-y-1.5">
