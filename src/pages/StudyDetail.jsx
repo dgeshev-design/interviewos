@@ -15,7 +15,7 @@ import { Progress } from '@/components/ui/progress'
 import StatusBadge from '@/components/ui/status-badge'
 import PageHeader from '@/components/layout/PageHeader'
 import { formatDateTime, cn } from '@/lib/utils'
-import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload } from 'lucide-react'
+import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { PHONE_CODES } from '@/lib/phoneCodes'
 
@@ -60,7 +60,8 @@ export default function StudyDetail() {
   const [showAdd, setShowAdd] = useState(false)
   const [newP, setNewP]       = useState(EMPTY_P)
   const [saving, setSaving]   = useState(false)
-  const [copied, setCopied]   = useState(false)
+  const [copied, setCopied]           = useState(false)
+  const [copiedReport, setCopiedReport] = useState(false)
 
   // Form builder
   const [form, setForm]               = useState(null)
@@ -216,13 +217,22 @@ export default function StudyDetail() {
   })
   const completed = participants.filter(p => p.status === 'completed').length
   const pct       = study?.target_count ? Math.round((completed / study.target_count) * 100) : 0
-  const publicUrl = study ? `${window.location.origin}/s/${study.slug}` : ''
+  const publicUrl  = study ? `${window.location.origin}/s/${study.slug}` : ''
+  const reportUrl  = study?.report_token ? `${window.location.origin}/report/${study.report_token}` : ''
 
   const copyLink = () => {
     navigator.clipboard?.writeText(publicUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
     toast({ title: 'Link copied', variant: 'success' })
+  }
+
+  const copyReportLink = () => {
+    if (!reportUrl) return
+    navigator.clipboard?.writeText(reportUrl)
+    setCopiedReport(true)
+    setTimeout(() => setCopiedReport(false), 2000)
+    toast({ title: 'Report link copied', variant: 'success' })
   }
 
   const handleAdd = async () => {
@@ -251,6 +261,12 @@ export default function StudyDetail() {
               {copied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
               {copied ? 'Copied!' : 'Copy booking link'}
             </Button>
+            {reportUrl && (
+              <Button variant="outline" size="sm" onClick={copyReportLink}>
+                {copiedReport ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Share2 className="h-3.5 w-3.5 mr-1.5" />}
+                {copiedReport ? 'Copied!' : 'Share report'}
+              </Button>
+            )}
             {tab === 'participants' && (
               <Button size="sm" onClick={() => setShowAdd(true)}>
                 <Plus className="h-4 w-4 mr-1.5" /> Add participant

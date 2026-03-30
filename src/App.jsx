@@ -10,6 +10,7 @@ import StudyDetail from '@/pages/StudyDetail'
 import ParticipantProfile from '@/pages/ParticipantProfile'
 import Settings from '@/pages/Settings'
 import PublicBooking from '@/pages/PublicBooking'
+import StudyReport from '@/pages/StudyReport'
 
 function AuthGuard({ children }) {
   const { user, loading } = useApp()
@@ -29,6 +30,7 @@ function AppRoutes() {
     <Routes>
       {/* Public routes */}
       <Route path="/s/:studySlug" element={<PublicBooking />} />
+      <Route path="/report/:token" element={<StudyReport />} />
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
 
       {/* Protected routes */}
