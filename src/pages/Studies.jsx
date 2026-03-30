@@ -12,7 +12,7 @@ import { Progress } from '@/components/ui/progress'
 import PageHeader from '@/components/layout/PageHeader'
 import { useApp } from '@/context/AppContext'
 import { cn, formatDate } from '@/lib/utils'
-import { Plus, Users, ArrowRight, MoreHorizontal } from 'lucide-react'
+import { Plus, Users, ArrowRight, MoreHorizontal, Copy } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 const STATUS_COLORS = {
@@ -22,7 +22,7 @@ const STATUS_COLORS = {
 }
 
 export default function Studies() {
-  const { studies, loading, add, update, remove } = useStudies()
+  const { studies, loading, add, update, remove, duplicate } = useStudies()
   const { participants } = useParticipants()
   const { user } = useApp()
   const navigate = useNavigate()
@@ -116,6 +116,12 @@ export default function Studies() {
                               Mark as {s}
                             </DropdownMenuItem>
                           ))}
+                          <DropdownMenuItem onClick={async () => {
+                            try { await duplicate(study.id) }
+                            catch (e) { alert(e.message) }
+                          }}>
+                            <Copy className="h-3.5 w-3.5 mr-2" /> Duplicate study
+                          </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this study?')) remove(study.id) }}>
                             Delete study
                           </DropdownMenuItem>

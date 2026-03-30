@@ -43,5 +43,43 @@ export function useStudies() {
     setStudies(p => p.filter(s => s.id !== id))
   }
 
-  return { studies, loading, refetch: fetch, add, update, remove }
+  const duplicate = async (id) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    const original = studies.find(s => s.id === id)
+    if (!original) return
+
+    // Create new study row
+    const slug = original.slug.replace(/-[a-z0-9]{4}$/, '') + '-' + Math.random().toString(36).slice(2, 6)
+    const { data: newStudy, error } = await supabase.from('studies').insert({
+      workspace_id:  original.workspace_id,
+      name:          `${original.name} (Copy)`,
+      description:   original.description,
+      target_count:  original.target_count,
+      status:        'draft',
+      slug,
+      created_by:    user?.id,
+    }).select().single()
+    if (error) throw new Error(error.message)
+
+    // Copy the active form if one exists
+    const { data: originalForm } = await supabase.from('forms').select('*').eq('study_id', id).eq('is_active', true).maybeSingle()
+    if (originalForm) {
+      await supabase.from('forms').insert({
+        study_id:       newStudy.id,
+        workspace_id:   originalForm.workspace_id,
+        is_active:      true,
+        fields:         originalForm.fields,
+        primary_color:  originalForm.primary_color,
+        banner_url:     originalForm.banner_url,
+        logo_url:       originalForm.logo_url,
+        booking_config: originalForm.booking_config,
+        step_titles:    originalForm.step_titles,
+      })
+    }
+
+    setStudies(p => [newStudy, ...p])
+    return newStudy
+  }
+
+  return { studies, loading, refetch: fetch, add, update, remove, duplicate }
 }
