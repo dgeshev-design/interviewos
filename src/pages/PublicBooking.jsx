@@ -450,27 +450,36 @@ export default function PublicBooking() {
                 const valid       = storedNum ? isPhoneValid(phoneStr) : null
                 return (
                   <div>
-                    <div style={{
-                      display: 'flex', alignItems: 'stretch', overflow: 'hidden',
-                      borderTop: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
-                      borderRight: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
-                      borderBottom: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
-                      borderLeft: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
-                      borderRadius: 8,
-                    }}>
+                    <div style={{ display: 'flex', alignItems: 'stretch' }}>
                       {locked ? (
-                        <span style={{display:'flex', alignItems:'center', gap:4, padding:'9px 10px', borderRight:'1px solid #e5e7eb', background:'#f3f4f6', fontSize:13, color:'#6b7280', whiteSpace:'nowrap', flexShrink:0}}>
+                        <span style={{
+                          display: 'flex', alignItems: 'center', gap: 4, padding: '9px 10px', fontSize: 13, color: '#6b7280', whiteSpace: 'nowrap', flexShrink: 0,
+                          background: '#f3f4f6',
+                          borderTop: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
+                          borderLeft: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
+                          borderBottom: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
+                          borderRight: '1px solid #e5e7eb',
+                          borderTopLeftRadius: 8, borderBottomLeftRadius: 8,
+                        }}>
                           {lockedEntry?.flag} {lockedEntry?.dialCode}
                         </span>
                       ) : (
-                        <PhoneCountryPicker value={activeISO} onChange={iso => setPhone(iso, storedNum)} inForm />
+                        <PhoneCountryPicker value={activeISO} onChange={iso => setPhone(iso, storedNum)} inForm borderColor={valid === false ? '#fca5a5' : '#d1d5db'} />
                       )}
                       <input
                         type="tel"
                         inputMode="tel"
                         placeholder="Phone number"
                         autoComplete="tel-national"
-                        style={{ flex: 1, minWidth: 0, padding: '9px 12px', fontSize: 13.5, color: '#111827', outline: 'none', border: 'none', background: 'transparent', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                        style={{
+                          flex: 1, minWidth: 0, padding: '9px 12px', fontSize: 13.5, color: '#111827',
+                          outline: 'none', background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box',
+                          borderTop: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
+                          borderRight: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
+                          borderBottom: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
+                          borderLeft: 'none',
+                          borderTopRightRadius: 8, borderBottomRightRadius: 8,
+                        }}
                         value={storedNum}
                         onChange={e => setPhone(activeISO, e.target.value.replace(/[^\d\s\-\+\(\)]/g, ''))}
                       />

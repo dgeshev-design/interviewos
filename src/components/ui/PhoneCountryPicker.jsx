@@ -9,7 +9,7 @@ import { ChevronDown, Search } from 'lucide-react'
  * inForm:   true → no outer border (sits inside a bordered container div)
  *           false (default) → standalone with full border
  */
-export default function PhoneCountryPicker({ value = 'GB', onChange, inForm = false }) {
+export default function PhoneCountryPicker({ value = 'GB', onChange, inForm = false, borderColor = '#d1d5db' }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const ref = useRef(null)
@@ -38,12 +38,15 @@ export default function PhoneCountryPicker({ value = 'GB', onChange, inForm = fa
   }, [])
 
   const btnStyle = inForm ? {
-    // Inside a container — only show a right separator, no outer border
+    // Inside a form row — outer 3 borders + right separator, left corners rounded
     display: 'flex', alignItems: 'center', gap: 4,
     padding: '9px 10px',
-    borderTop: 'none', borderLeft: 'none', borderBottom: 'none',
+    borderTop: `1px solid ${borderColor}`,
+    borderLeft: `1px solid ${borderColor}`,
+    borderBottom: `1px solid ${borderColor}`,
     borderRight: '1px solid #e5e7eb',
-    borderRadius: 0,
+    borderTopLeftRadius: 8, borderBottomLeftRadius: 8,
+    borderTopRightRadius: 0, borderBottomRightRadius: 0,
     background: '#f9fafb', cursor: 'pointer', fontSize: 13,
     whiteSpace: 'nowrap', minWidth: 90,
   } : {
