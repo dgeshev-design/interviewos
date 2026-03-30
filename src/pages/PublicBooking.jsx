@@ -376,27 +376,34 @@ export default function PublicBooking() {
                 // stored as "CODE|NUMBER" internally
                 const [storedCode, storedNum] = stored.includes('|') ? stored.split('|') : [defaultCode, stored]
                 const setPhone = (code, num) => setAnswers(a => ({...a, [field.id]: `${code}|${num}`}))
+                const activeCode = storedCode || defaultCode
+                const activeFlag = PHONE_CODES.find(c => c.code === activeCode)?.label.split(' ')[0] || ''
                 return (
                   <div style={{display:'flex',gap:6}}>
                     {locked ? (
-                      <span style={{...s.input, width:'auto', minWidth:72, flexShrink:0, background:'#f3f4f6', color:'#6b7280', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13}}>
-                        {storedCode || defaultCode}
+                      <span style={{...s.input, width:'auto', flexShrink:0, background:'#f3f4f6', color:'#6b7280', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, padding:'9px 10px', whiteSpace:'nowrap'}}>
+                        {activeFlag} {activeCode}
                       </span>
                     ) : (
                       <select
-                        style={{...s.input, width:'auto', minWidth:90, flexShrink:0, paddingRight:8}}
-                        value={storedCode || defaultCode}
+                        style={{...s.input, width:'auto', flexShrink:0, padding:'9px 6px', fontSize:13, cursor:'pointer'}}
+                        value={activeCode}
                         onChange={e => setPhone(e.target.value, storedNum)}
                       >
-                        {PHONE_CODES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+                        {PHONE_CODES.map(c => {
+                          const flag = c.label.split(' ')[0]
+                          return <option key={`${c.iso}-${c.code}`} value={c.code}>{flag} {c.code}</option>
+                        })}
                       </select>
                     )}
                     <input
                       type="tel"
+                      inputMode="numeric"
                       placeholder="Phone number"
+                      autoComplete="tel-national"
                       style={{...s.input, flex:1}}
                       value={storedNum}
-                      onChange={e => setPhone(storedCode || defaultCode, e.target.value)}
+                      onChange={e => setPhone(activeCode, e.target.value.replace(/[^\d\s\-\+\(\)]/g, ''))}
                     />
                   </div>
                 )
