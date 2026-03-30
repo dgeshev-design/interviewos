@@ -450,20 +450,27 @@ export default function PublicBooking() {
                 const valid       = storedNum ? isPhoneValid(phoneStr) : null
                 return (
                   <div>
-                    <div style={{display:'flex', alignItems:'stretch'}}>
+                    <div style={{
+                      display: 'flex', alignItems: 'stretch', overflow: 'hidden',
+                      borderTop: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
+                      borderRight: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
+                      borderBottom: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
+                      borderLeft: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
+                      borderRadius: 8,
+                    }}>
                       {locked ? (
-                        <span style={{display:'flex', alignItems:'center', gap:4, padding:'9px 10px', borderRadius:'6px 0 0 6px', border:'1px solid #d1d5db', borderRight:'none', background:'#f3f4f6', fontSize:13, color:'#6b7280', whiteSpace:'nowrap', flexShrink:0, lineHeight:'1.2'}}>
+                        <span style={{display:'flex', alignItems:'center', gap:4, padding:'9px 10px', borderRight:'1px solid #e5e7eb', background:'#f3f4f6', fontSize:13, color:'#6b7280', whiteSpace:'nowrap', flexShrink:0}}>
                           {lockedEntry?.flag} {lockedEntry?.dialCode}
                         </span>
                       ) : (
-                        <PhoneCountryPicker value={activeISO} onChange={iso => setPhone(iso, storedNum)} />
+                        <PhoneCountryPicker value={activeISO} onChange={iso => setPhone(iso, storedNum)} inForm />
                       )}
                       <input
                         type="tel"
                         inputMode="tel"
                         placeholder="Phone number"
                         autoComplete="tel-national"
-                        style={{...s.input, flex:1, width:'auto', borderRadius:'0 6px 6px 0', borderLeftWidth:0, borderColor: valid === false ? '#fca5a5' : '#d1d5db'}}
+                        style={{ flex: 1, minWidth: 0, padding: '9px 12px', fontSize: 13.5, color: '#111827', outline: 'none', border: 'none', background: 'transparent', fontFamily: 'inherit', boxSizing: 'border-box' }}
                         value={storedNum}
                         onChange={e => setPhone(activeISO, e.target.value.replace(/[^\d\s\-\+\(\)]/g, ''))}
                       />

@@ -4,10 +4,12 @@ import { ChevronDown, Search } from 'lucide-react'
 
 /**
  * Searchable country picker for phone inputs.
- * value: ISO code (e.g. "GB")
- * onChange(iso): called with new ISO code
+ * value:    ISO code (e.g. "GB")
+ * onChange: called with new ISO code
+ * inForm:   true → no outer border (sits inside a bordered container div)
+ *           false (default) → standalone with full border
  */
-export default function PhoneCountryPicker({ value = 'GB', onChange }) {
+export default function PhoneCountryPicker({ value = 'GB', onChange, inForm = false }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const ref = useRef(null)
@@ -35,19 +37,31 @@ export default function PhoneCountryPicker({ value = 'GB', onChange }) {
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [])
 
+  const btnStyle = inForm ? {
+    // Inside a container — only show a right separator, no outer border
+    display: 'flex', alignItems: 'center', gap: 4,
+    padding: '9px 10px',
+    borderTop: 'none', borderLeft: 'none', borderBottom: 'none',
+    borderRight: '1px solid #e5e7eb',
+    borderRadius: 0,
+    background: '#f9fafb', cursor: 'pointer', fontSize: 13,
+    whiteSpace: 'nowrap', minWidth: 90,
+  } : {
+    // Standalone — full border, fully rounded
+    display: 'flex', alignItems: 'center', gap: 4,
+    padding: '9px 10px',
+    borderTop: '1px solid #d1d5db',
+    borderRight: '1px solid #d1d5db',
+    borderBottom: '1px solid #d1d5db',
+    borderLeft: '1px solid #d1d5db',
+    borderRadius: 6,
+    background: '#f9fafb', cursor: 'pointer', fontSize: 13,
+    whiteSpace: 'nowrap',
+  }
+
   return (
     <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
-      <button
-        type="button"
-        onClick={() => { setOpen(o => !o); setQuery('') }}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          padding: '9px 10px', borderRadius: '6px 0 0 6px',
-          border: '1px solid #d1d5db', borderRight: 'none',
-          background: '#f9fafb', cursor: 'pointer', fontSize: 13,
-          whiteSpace: 'nowrap', minWidth: 90, lineHeight: '1.2',
-        }}
-      >
+      <button type="button" onClick={() => { setOpen(o => !o); setQuery('') }} style={btnStyle}>
         <span style={{ fontSize: 16 }}>{current.flag}</span>
         <span style={{ color: '#374151', fontWeight: 500 }}>{current.dialCode}</span>
         <ChevronDown size={12} style={{ color: '#9ca3af', marginLeft: 2 }} />
@@ -55,12 +69,11 @@ export default function PhoneCountryPicker({ value = 'GB', onChange }) {
 
       {open && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, zIndex: 999,
+          position: 'absolute', top: '100%', left: 0, zIndex: 9999,
           background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8,
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 280, marginTop: 4,
           overflow: 'hidden',
         }}>
-          {/* Search */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Search size={13} style={{ color: '#9ca3af', flexShrink: 0 }} />
             <input
@@ -68,14 +81,9 @@ export default function PhoneCountryPicker({ value = 'GB', onChange }) {
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search country or code…"
-              style={{
-                border: 'none', outline: 'none', fontSize: 13,
-                background: 'transparent', width: '100%', color: '#111827',
-              }}
+              style={{ border: 'none', outline: 'none', fontSize: 13, background: 'transparent', width: '100%', color: '#111827' }}
             />
           </div>
-
-          {/* List */}
           <div style={{ maxHeight: 240, overflowY: 'auto' }}>
             {filtered.length === 0 && (
               <div style={{ padding: '10px 14px', fontSize: 13, color: '#9ca3af' }}>No results</div>
@@ -87,7 +95,8 @@ export default function PhoneCountryPicker({ value = 'GB', onChange }) {
                 onClick={() => { onChange(c.iso); setOpen(false); setQuery('') }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  width: '100%', padding: '7px 12px', border: 'none',
+                  width: '100%', padding: '7px 12px',
+                  borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: 'none',
                   background: c.iso === value ? '#f5f3ff' : 'transparent',
                   cursor: 'pointer', textAlign: 'left', fontSize: 13,
                 }}
