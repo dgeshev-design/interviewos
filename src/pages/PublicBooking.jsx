@@ -68,6 +68,7 @@ export default function PublicBooking() {
   const activeForm    = data?.forms?.find(f => f.is_active)
   const fields        = activeForm?.fields || []
   const slots         = data?.slots || []
+  const duration      = slots[0]?.duration_minutes || 60
   const brandColor    = activeForm?.primary_color || '#6366f1'
   const bannerUrl     = activeForm?.banner_url || null
   const logoUrl       = activeForm?.logo_url || null
@@ -193,7 +194,6 @@ export default function PublicBooking() {
     const slotsForDate = (d) => slots.filter(s => isSameDay(parseISO(s.starts_at), d))
     const hasSlots = (d) => slotsForDate(d).length > 0
     const daySlots  = selectedDate ? slotsForDate(selectedDate) : []
-    const duration  = slots[0]?.duration_minutes || 60
 
     // Compute allowed window from bookingConfig (mirror server logic, using local dates)
     const cfg = data?.bookingConfig || {}
