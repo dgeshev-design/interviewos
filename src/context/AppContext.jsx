@@ -57,18 +57,16 @@ export function AppProvider({ children }) {
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
 
     if (!isLocalhost) {
-      // Look up workspace by current domain
-      const { data: domainRow } = await supabase
-        .from('workspace_domains')
-        .select('*, workspaces(*)')
-        .eq('domain', hostname)
-        .maybeSingle()
-
-      if (domainRow?.workspaces) {
-        setWorkspace(domainRow.workspaces)
-        setIsMaster(!!domainRow.is_master)
-        return domainRow.workspaces
-      }
+      // Resolve via server API (service key bypasses RLS — any user gets the right workspace)
+      try {
+        const r = await fetch(`/api/workspace?domain=${encodeURIComponent(hostname)}`)
+        if (r.ok) {
+          const { workspace, is_master } = await r.json()
+          setWorkspace(workspace)
+          setIsMaster(!!is_master)
+          return workspace
+        }
+      } catch {}
     }
 
     // Fallback for localhost / unknown domain: use existing workspace by user_id
