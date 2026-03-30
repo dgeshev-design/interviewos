@@ -47,10 +47,11 @@ export default async function handler(req, res) {
         return res.status(br.status).json({ error: bd.message || 'Failed to create bucket' })
       }
 
-      // Generate signed upload URL (valid for 60s)
+      // Generate signed upload URL (valid for 60s) — send empty body to satisfy Content-Type: application/json
       const r = await fetch(`${SB_URL}/storage/v1/object/upload/sign/form-assets/${path}`, {
         method: 'POST',
         headers: hdrs,
+        body: JSON.stringify({}),
       })
       const d = await r.json()
       if (!r.ok) return res.status(r.status).json({ error: d.message || 'Failed to create signed URL' })
