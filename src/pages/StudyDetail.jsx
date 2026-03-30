@@ -123,8 +123,8 @@ export default function StudyDetail() {
       setForm(data)
     } else {
       const defaultFields = [
-        { id: crypto.randomUUID(), label: 'Full name', type: 'text',  required: true, system: true, options: [], is_screener: false, disqualify_if: '', condition_field: '', condition_value: '' },
-        { id: crypto.randomUUID(), label: 'Email',     type: 'email', required: true, system: true, options: [], is_screener: false, disqualify_if: '', condition_field: '', condition_value: '' },
+        { id: crypto.randomUUID(), label: 'Full name', type: 'text',  required: true, system: true, participant_field: 'name',  options: [], is_screener: false, disqualify_if: '', condition_field: '', condition_value: '' },
+        { id: crypto.randomUUID(), label: 'Email',     type: 'email', required: true, system: true, participant_field: 'email', options: [], is_screener: false, disqualify_if: '', condition_field: '', condition_value: '' },
       ]
       const { data: created, error } = await supabase
         .from('forms')
@@ -969,20 +969,27 @@ export default function StudyDetail() {
               {editingField.type !== 'consent_checks' && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">Maps to participant info</Label>
-                  <Select
-                    value={editingField.participant_field || '__none__'}
-                    onValueChange={v => setEditingField(f => ({ ...f, participant_field: v === '__none__' ? '' : v }))}>
-                    <SelectTrigger><SelectValue placeholder="None (store in form responses only)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {PARTICIPANT_INFO_FIELDS.filter(pf =>
-                        pf.value === editingField.participant_field ||
-                        !(form?.fields || []).some(f => f.id !== editingField.id && f.participant_field === pf.value)
-                      ).map(pf => (
-                        <SelectItem key={pf.value} value={pf.value}>{pf.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {editingField.system ? (
+                    <div className="flex h-9 items-center px-3 rounded-md border bg-muted text-sm text-muted-foreground">
+                      {PARTICIPANT_INFO_FIELDS.find(pf => pf.value === editingField.participant_field)?.label || '—'}
+                      <span className="ml-auto text-xs text-blue-500">Locked</span>
+                    </div>
+                  ) : (
+                    <Select
+                      value={editingField.participant_field || '__none__'}
+                      onValueChange={v => setEditingField(f => ({ ...f, participant_field: v === '__none__' ? '' : v }))}>
+                      <SelectTrigger><SelectValue placeholder="None (store in form responses only)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {PARTICIPANT_INFO_FIELDS.filter(pf =>
+                          pf.value === editingField.participant_field ||
+                          !(form?.fields || []).some(f => f.id !== editingField.id && f.participant_field === pf.value)
+                        ).map(pf => (
+                          <SelectItem key={pf.value} value={pf.value}>{pf.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <p className="text-[11px] text-muted-foreground">Answer will be saved directly to the participant's profile</p>
                 </div>
               )}
