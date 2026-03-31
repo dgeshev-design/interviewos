@@ -14,7 +14,7 @@ import { TRIGGER_LABELS, applyTemplateVars } from '@/lib/utils'
 import { normalizeToE164 } from '@/lib/phoneCodes'
 import PageHeader from '@/components/layout/PageHeader'
 import { useToast } from '@/hooks/use-toast'
-import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Users, Zap, Eye, EyeOff } from 'lucide-react'
+import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Users, Zap, Eye, EyeOff, Sparkles } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const CHANNEL_COLORS = { email: 'blue', whatsapp: 'success', sms: 'secondary' }
@@ -46,6 +46,11 @@ export default function Settings() {
   const [intgForm, setIntgForm]   = useState(null)   // editable copy
   const [savingIntg, setSavingIntg] = useState(false)
   const [showSecrets, setShowSecrets] = useState({}) // { fieldKey: bool }
+
+  // AI settings state
+  const [aiForm, setAiForm]       = useState({ provider: 'openai', api_key: '', model: '' })
+  const [savingAi, setSavingAi]   = useState(false)
+  const [showAiKey, setShowAiKey] = useState(false)
 
   // Send-test state
   const [testTemplate, setTestTemplate]     = useState(null) // template being tested
@@ -101,6 +106,10 @@ export default function Settings() {
         const row = data ? { ...defaults, ...data } : defaults
         setIntg(row); setIntgForm(row)
       })
+    supabase.from('ai_settings').select('*').eq('workspace_id', ownWorkspace.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) setAiForm({ provider: data.provider || 'openai', api_key: data.api_key || '', model: data.model || '' })
+      })
   }, [ownWorkspace])
 
   const handleSaveIntg = async () => {
@@ -116,6 +125,20 @@ export default function Settings() {
       toast({ title: 'Save failed', description: e.message, variant: 'destructive' })
     }
     setSavingIntg(false)
+  }
+
+  const handleSaveAI = async () => {
+    if (!ownWorkspace) return
+    setSavingAi(true)
+    try {
+      const payload = { ...aiForm, workspace_id: ownWorkspace.id }
+      const { error } = await supabase.from('ai_settings').upsert(payload, { onConflict: 'workspace_id' })
+      if (error) throw new Error(error.message)
+      toast({ title: 'AI settings saved', variant: 'success' })
+    } catch (e) {
+      toast({ title: 'Save failed', description: e.message, variant: 'destructive' })
+    }
+    setSavingAi(false)
   }
 
   const toggleSecret = (key) => setShowSecrets(s => ({ ...s, [key]: !s[key] }))
@@ -469,6 +492,59 @@ export default function Settings() {
 
             <Button size="sm" onClick={handleSaveIntg} disabled={savingIntg}>
               {savingIntg ? 'Saving…' : 'Save integrations'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AI settings */}
+      {isOwner && (
+        <Card className="shadow-none mb-5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+              AI
+            </CardTitle>
+            <CardDescription>Configure an AI provider to auto-extract quotes and generate summaries from transcripts.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Provider</Label>
+              <Select value={aiForm.provider} onValueChange={v => setAiForm(f => ({ ...f, provider: v }))}>
+                <SelectTrigger className="max-w-[200px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI</SelectItem>
+                  <SelectItem value="claude">Anthropic Claude</SelectItem>
+                  <SelectItem value="gemini">Google Gemini</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">API key</Label>
+              <div className="flex gap-2 max-w-md">
+                <Input
+                  type={showAiKey ? 'text' : 'password'}
+                  value={aiForm.api_key}
+                  onChange={e => setAiForm(f => ({ ...f, api_key: e.target.value }))}
+                  placeholder={aiForm.provider === 'claude' ? 'sk-ant-…' : aiForm.provider === 'gemini' ? 'AIza…' : 'sk-…'}
+                  className="font-mono text-sm"
+                />
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => setShowAiKey(v => !v)}>
+                  {showAiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Model <span className="text-muted-foreground">(optional — leave blank for default)</span></Label>
+              <Input
+                value={aiForm.model}
+                onChange={e => setAiForm(f => ({ ...f, model: e.target.value }))}
+                placeholder={aiForm.provider === 'claude' ? 'claude-haiku-4-5-20251001' : aiForm.provider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4o-mini'}
+                className="font-mono text-sm max-w-md"
+              />
+            </div>
+            <Button size="sm" onClick={handleSaveAI} disabled={savingAi}>
+              {savingAi ? 'Saving…' : 'Save AI settings'}
             </Button>
           </CardContent>
         </Card>

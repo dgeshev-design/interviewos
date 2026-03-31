@@ -6,7 +6,7 @@ import { useSendLog } from '@/hooks/useSendLog'
 import { useTemplates } from '@/hooks/useTemplates'
 import { useStudies } from '@/hooks/useStudies'
 import { useApp } from '@/context/AppContext'
-import { sendEmail, sendWhatsApp, cancelCalEvent } from '@/lib/api'
+import { sendEmail, sendWhatsApp, cancelCalEvent, callAI } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { applyTemplateVars, formatDateTime, formatDate, TRIGGER_LABELS, cn } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -23,7 +23,7 @@ import SendCommsModal from '@/components/comms/SendCommsModal'
 import { useToast } from '@/hooks/use-toast'
 import {
   ArrowLeft, Star, Tag, Plus, X, Upload, FileText, Image, Video,
-  File, Trash2, Send, Gift, Mail, MessageCircle, ExternalLink, Quote, Check, XCircle
+  File, Trash2, Send, Gift, Mail, MessageCircle, ExternalLink, Quote, Check, XCircle, Sparkles
 } from 'lucide-react'
 
 const FILE_ICONS = { video: Video, image: Image, document: FileText, transcript: File }
@@ -61,6 +61,8 @@ export default function ParticipantProfile() {
   const [fileUrls, setFileUrls]       = useState({})
   const [cancelling, setCancelling]   = useState(false)
   const [commsSettings, setCommsSettings] = useState(null)
+  const [aiSettings, setAiSettings]   = useState(null)
+  const [aiLoading, setAiLoading]     = useState('')  // '' | 'quotes' | 'summary'
 
   useEffect(() => {
     if (participant && !form) setForm({ ...participant })
@@ -71,6 +73,8 @@ export default function ParticipantProfile() {
     if (!wsId) return
     supabase.from('workspace_settings').select('*').eq('workspace_id', wsId).maybeSingle()
       .then(({ data }) => setCommsSettings(data || null))
+    supabase.from('ai_settings').select('*').eq('workspace_id', wsId).maybeSingle()
+      .then(({ data }) => setAiSettings(data || null))
   }, [ownWorkspace?.id, workspace?.id])
 
   useEffect(() => {
@@ -101,6 +105,44 @@ export default function ParticipantProfile() {
     autoSaveTimer.current = setTimeout(() => {
       update(participantId, patch).catch(() => {})
     }, 800)
+  }
+
+  const markQuotesWithAI = async () => {
+    if (!form.transcript || !aiSettings?.api_key) return
+    setAiLoading('quotes')
+    try {
+      const result = await callAI({ action: 'mark-quotes', transcript: form.transcript, ai_settings: aiSettings })
+      if (result.error) throw new Error(result.error)
+      const newQuotes = (result.quotes || []).map(text => ({ id: crypto.randomUUID(), text }))
+      const merged = [...(form.quotes || []), ...newQuotes.filter(nq => !(form.quotes || []).some(q => q.text === nq.text))]
+      setForm(f => ({ ...f, quotes: merged }))
+      autoSave({ quotes: merged })
+      toast({ title: `${newQuotes.length} quotes extracted`, variant: 'success' })
+    } catch (e) {
+      toast({ title: 'AI error', description: e.message, variant: 'destructive' })
+    }
+    setAiLoading('')
+  }
+
+  const generateSummaryWithAI = async () => {
+    if (!form.transcript || !aiSettings?.api_key) return
+    setAiLoading('summary')
+    try {
+      const result = await callAI({
+        action: 'generate-summary',
+        transcript: form.transcript,
+        quotes: (form.quotes || []).map(q => q.text),
+        ai_settings: aiSettings,
+      })
+      if (result.error) throw new Error(result.error)
+      const summary = result.summary || ''
+      setForm(f => ({ ...f, notes: summary }))
+      autoSave({ notes: summary })
+      toast({ title: 'Summary generated', variant: 'success' })
+    } catch (e) {
+      toast({ title: 'AI error', description: e.message, variant: 'destructive' })
+    }
+    setAiLoading('')
   }
 
   const handleCancel = async () => {
@@ -479,6 +521,18 @@ export default function ParticipantProfile() {
                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => addQuote(selectedText)}>
                           <Quote className="h-3 w-3" /> Add as quote
                         </Button>
+                      )}
+                      {aiSettings?.api_key && form.transcript && (
+                        <>
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={markQuotesWithAI} disabled={!!aiLoading}>
+                            <Sparkles className="h-3 w-3" />
+                            {aiLoading === 'quotes' ? 'Extracting…' : 'AI quotes'}
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={generateSummaryWithAI} disabled={!!aiLoading}>
+                            <Sparkles className="h-3 w-3" />
+                            {aiLoading === 'summary' ? 'Summarising…' : 'AI summary'}
+                          </Button>
+                        </>
                       )}
                       <label className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium cursor-pointer border border-input bg-background hover:bg-accent transition-colors">
                         <Upload className="h-3 w-3" /> Upload .txt

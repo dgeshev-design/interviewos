@@ -15,10 +15,11 @@ import { Progress } from '@/components/ui/progress'
 import StatusBadge from '@/components/ui/status-badge'
 import PageHeader from '@/components/layout/PageHeader'
 import { formatDateTime, cn } from '@/lib/utils'
-import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2 } from 'lucide-react'
+import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2, Sparkles, Quote } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 import NotionEditor from '@/components/ui/notion-editor'
+import { callAI } from '@/lib/api'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const EMPTY_P = { name: '', email: '', phone: '', age_group: '', location: '', status: 'booked', booked_at: '', meet_link: '', notes: '' }
@@ -81,8 +82,16 @@ export default function StudyDetail() {
   // Summary tab
   const [synthesis, setSynthesis]       = useState('')
   const [savingSynthesis, setSavingSynthesis] = useState(false)
+  const [aiSettings, setAiSettings]     = useState(null)
+  const [generatingSynthesis, setGeneratingSynthesis] = useState(false)
   const synthesisTimer = useRef(null)
   useEffect(() => { if (study?.synthesis != null) setSynthesis(study.synthesis) }, [study?.id])
+  useEffect(() => {
+    if (!workspace) return
+    supabase.from('ai_settings').select('*').eq('workspace_id', workspace.id).maybeSingle()
+      .then(({ data }) => setAiSettings(data || null))
+  }, [workspace?.id])
+
   const saveSynthesis = async (val) => {
     setSavingSynthesis(true)
     const { error } = await supabase.from('studies').update({ synthesis: val }).eq('id', studyId)
@@ -93,6 +102,29 @@ export default function StudyDetail() {
     setSynthesis(val)
     clearTimeout(synthesisTimer.current)
     synthesisTimer.current = setTimeout(() => saveSynthesis(val), 800)
+  }
+
+  const generateSynthesisWithAI = async () => {
+    if (!aiSettings?.api_key) return
+    // Collect all quotes from all participants
+    const allQuotes = participants.flatMap(p =>
+      (p.quotes || []).map(q => ({ text: q.text, participantName: p.name }))
+    )
+    if (!allQuotes.length) {
+      toast({ title: 'No quotes yet', description: 'Add quotes to participant transcripts first.', variant: 'destructive' })
+      return
+    }
+    setGeneratingSynthesis(true)
+    try {
+      const result = await callAI({ action: 'generate-synthesis', quotes: allQuotes, ai_settings: aiSettings })
+      if (result.error) throw new Error(result.error)
+      const text = result.synthesis || ''
+      autoSaveSynthesis(text)
+      toast({ title: 'Synthesis generated', variant: 'success' })
+    } catch (e) {
+      toast({ title: 'AI error', description: e.message, variant: 'destructive' })
+    }
+    setGeneratingSynthesis(false)
   }
 
   // Form builder
@@ -444,22 +476,60 @@ export default function StudyDetail() {
 
       {/* ── SUMMARY TAB ──────────────────────────────────────────────────── */}
       {tab === 'summary' && (
-        <Card className="shadow-none">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Study summary</CardTitle>
-              {savingSynthesis && <span className="text-xs text-muted-foreground">Saving…</span>}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">This summary appears at the top of your shareable report.</p>
-          </CardHeader>
-          <CardContent>
-            <NotionEditor
-              value={synthesis}
-              onChange={autoSaveSynthesis}
-              placeholder="Write a synthesis or summary of this study…"
-            />
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          {/* All quotes from participants */}
+          {(() => {
+            const allQuotes = participants.flatMap(p => (p.quotes || []).map(q => ({ ...q, participantName: p.name })))
+            if (!allQuotes.length) return null
+            return (
+              <Card className="shadow-none">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Quote className="h-4 w-4 text-muted-foreground" />
+                    All quotes ({allQuotes.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {allQuotes.map(q => (
+                      <div key={q.id} className="p-3 rounded-md border bg-muted/20">
+                        <p className="text-sm italic">"{q.text}"</p>
+                        <p className="text-xs text-muted-foreground mt-1">— {q.participantName}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })()}
+
+          <Card className="shadow-none">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm">Study summary</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">This summary appears at the top of your shareable report.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {savingSynthesis && <span className="text-xs text-muted-foreground">Saving…</span>}
+                  {aiSettings?.api_key && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={generateSynthesisWithAI} disabled={generatingSynthesis}>
+                      <Sparkles className="h-3 w-3" />
+                      {generatingSynthesis ? 'Generating…' : 'AI synthesis'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <NotionEditor
+                value={synthesis}
+                onChange={autoSaveSynthesis}
+                placeholder="Write a synthesis or summary of this study…"
+              />
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* ── FORM BUILDER TAB ─────────────────────────────────────────────── */}

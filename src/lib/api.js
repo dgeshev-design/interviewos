@@ -27,3 +27,5 @@ export const submitPublicForm = (data) => post('/api/public?action=submit',     
 
 export const getAvailabilityRule  = (workspaceId) => get(`/api/calendar?action=get-rule&workspaceId=${workspaceId}`)
 export const saveAvailabilityRule = (data)        => post('/api/calendar?action=save-rule', data)
+
+export const callAI = (data) => post('/api/ai', data)
