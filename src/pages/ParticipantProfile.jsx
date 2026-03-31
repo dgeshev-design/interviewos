@@ -21,6 +21,7 @@ import StatusBadge from '@/components/ui/status-badge'
 import NotionEditor from '@/components/ui/notion-editor'
 import SendCommsModal from '@/components/comms/SendCommsModal'
 import { useToast } from '@/hooks/use-toast'
+import { ToastAction } from '@/components/ui/toast'
 import {
   ArrowLeft, Star, Tag, Plus, X, Upload, FileText, Image, Video,
   File, Trash2, Send, Gift, Mail, MessageCircle, ExternalLink, Quote, Check, XCircle, Sparkles
@@ -138,7 +139,7 @@ export default function ParticipantProfile() {
       const summary = result.summary || ''
       setForm(f => ({ ...f, summary }))
       autoSave({ summary })
-      toast({ title: 'Summary generated', variant: 'success' })
+      toast({ title: 'Summary generated', variant: 'success', action: <ToastAction altText="View summary" onClick={() => setTab('overview')}>View</ToastAction> })
     } catch (e) {
       toast({ title: 'AI error', description: e.message, variant: 'destructive' })
     }
