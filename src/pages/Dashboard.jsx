@@ -12,6 +12,7 @@ import StatusBadge from '@/components/ui/status-badge'
 import PageHeader from '@/components/layout/PageHeader'
 import { formatDateTime } from '@/lib/utils'
 import { Plus, ArrowRight, Video } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function Dashboard() {
   useEffect(() => { document.title = 'Dashboard | InterviewOS' }, [])
@@ -56,7 +57,7 @@ export default function Dashboard() {
           <Card key={s.label} className="shadow-none">
             <CardContent className="p-5">
               <div className="text-xs text-muted-foreground mb-1">{s.label}</div>
-              <div className={`text-2xl font-bold ${s.color}`}>{pLoading ? '—' : s.value}</div>
+              {pLoading ? <Skeleton className="h-8 w-12 mt-1" /> : <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>}
             </CardContent>
           </Card>
         ))}
@@ -75,7 +76,19 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              {upcoming.length === 0 ? (
+              {pLoading ? (
+                <div className="space-y-2">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div className="space-y-1.5">
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-3 w-36" />
+                      </div>
+                      <Skeleton className="h-6 w-16 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              ) : upcoming.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">No upcoming sessions.</p>
               ) : (
                 <div className="space-y-2">
@@ -115,8 +128,19 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              {sLoading ? <p className="text-sm text-muted-foreground">Loading…</p> :
-               studies.length === 0 ? <p className="text-sm text-muted-foreground py-4 text-center">No studies yet.</p> :
+              {sLoading ? (
+                <div className="space-y-3">
+                  {[1,2,3].map(i => (
+                    <div key={i}>
+                      <div className="flex justify-between mb-1.5">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-4 w-8" />
+                      </div>
+                      <Skeleton className="h-1.5 w-full" />
+                    </div>
+                  ))}
+                </div>
+              ) : studies.length === 0 ? <p className="text-sm text-muted-foreground py-4 text-center">No studies yet.</p> :
                <div className="space-y-3">
                 {studies.slice(0, 5).map(s => {
                   const studyPs = participants.filter(p => p.study_id === s.id)

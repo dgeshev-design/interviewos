@@ -21,6 +21,7 @@ import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 import NotionEditor from '@/components/ui/notion-editor'
 import { callAI } from '@/lib/api'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const EMPTY_P = { name: '', email: '', phone: '', age_group: '', location: '', status: 'booked', booked_at: '', meet_link: '', notes: '' }
@@ -439,7 +440,19 @@ export default function StudyDetail() {
 
           <Card className="shadow-none">
             <CardContent className="p-0">
-              {pLoading ? <p className="p-6 text-sm text-muted-foreground">Loading…</p> :
+              {pLoading ? (
+                <div className="p-4 space-y-0">
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className="flex items-center gap-4 px-2 py-3 border-b last:border-0">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-4 w-36 flex-1" />
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                      <Skeleton className="h-4 w-4 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              ) :
                filtered.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-sm text-muted-foreground mb-3">

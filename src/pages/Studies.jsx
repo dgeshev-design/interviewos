@@ -15,6 +15,7 @@ import { cn, formatDate } from '@/lib/utils'
 import { Plus, Users, ArrowRight, MoreHorizontal, Copy } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const STATUS_COLORS = {
   active: 'success',
@@ -55,7 +56,25 @@ export default function Studies() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <div className="space-y-3">
+          {[1,2,3].map(i => (
+            <Card key={i} className="shadow-none">
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2.5">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-5 w-14 rounded-full" />
+                    </div>
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-1.5 w-48 mt-2" />
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded-md" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : studies.length === 0 ? (
         <Card className="shadow-none">
           <CardContent className="py-16 text-center">

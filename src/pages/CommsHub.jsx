@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useTemplates } from '@/hooks/useTemplates'
 import { useParticipants } from '@/hooks/useParticipants'
 import { useApp } from '@/context/AppContext'
@@ -114,7 +115,26 @@ export default function CommsHub() {
 
       {/* Templates */}
       <div className="flex-col gap-3">
-        {loading && <p className="muted">Loading templates…</p>}
+        {loading && (
+          <div className="space-y-3">
+            {[1,2,3].map(i => (
+              <div key={i} className="card">
+                <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Skeleton className="h-7 w-16 rounded-md" />
+                    <Skeleton className="h-7 w-16 rounded-md" />
+                  </div>
+                </div>
+                <Skeleton className="h-3 w-full mb-1.5" />
+                <Skeleton className="h-3 w-3/4" />
+              </div>
+            ))}
+          </div>
+        )}
         {!loading && templates.length === 0 && (
           <div className="card" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 48 }}>
             No templates yet. Create your first template.

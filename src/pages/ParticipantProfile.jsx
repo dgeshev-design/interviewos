@@ -27,6 +27,7 @@ import {
   File, Trash2, Send, Gift, Mail, MessageCircle, ExternalLink, Quote, Check, XCircle, Sparkles
 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const FILE_ICONS = { video: Video, image: Image, document: FileText, transcript: File }
 const CHANNEL_ICONS = { email: Mail, whatsapp: MessageCircle, sms: MessageCircle }
@@ -334,7 +335,26 @@ export default function ParticipantProfile() {
 
   const fmtBytes = (b) => b < 1024*1024 ? `${(b/1024).toFixed(0)} KB` : `${(b/1024/1024).toFixed(1)} MB`
 
-  if (!form) return <div className="p-8 text-sm text-muted-foreground">Loading…</div>
+  if (!form) return (
+    <div className="p-8">
+      <Skeleton className="h-4 w-32 mb-5" />
+      <div className="flex items-center gap-4 mb-6">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-4 w-56" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        {[1,2,3,4,5,6].map(i => (
+          <div key={i} className="space-y-1.5">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 
   return (
     <div className="p-8">
