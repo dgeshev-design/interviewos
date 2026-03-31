@@ -33,14 +33,38 @@ export default function StudyReport() {
 
   const renderEditorContent = (value) => {
     if (!value) return null
+    // Extract text from a list item — handles both string items and object items { content, items }
+    const itemText = (item) => typeof item === 'string' ? item : (item?.content || item?.text || '')
     try {
       const doc = typeof value === 'string' ? JSON.parse(value) : value
       if (!doc?.blocks) throw new Error()
       return (doc.blocks || []).map((block, i) => {
         const text = block.data?.text || ''
-        if (block.type === 'header') return <div key={i} style={{ fontWeight: 600, fontSize: block.data?.level <= 2 ? 16 : 14, marginTop: 12, marginBottom: 4 }} dangerouslySetInnerHTML={{ __html: text }} />
-        if (block.type === 'list') return <ul key={i} style={{ paddingLeft: 20, marginBottom: 8 }}>{(block.data?.items || []).map((item, j) => <li key={j} dangerouslySetInnerHTML={{ __html: item }} />)}</ul>
-        if (block.type === 'delimiter') return <hr key={i} style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+        if (block.type === 'header') {
+          return <div key={i} style={{ fontWeight: 600, fontSize: block.data?.level <= 2 ? 16 : 14, marginTop: 12, marginBottom: 4 }} dangerouslySetInnerHTML={{ __html: text }} />
+        }
+        if (block.type === 'list') {
+          const Tag = block.data?.style === 'ordered' ? 'ol' : 'ul'
+          return <Tag key={i} style={{ paddingLeft: 20, marginBottom: 8 }}>{(block.data?.items || []).map((item, j) => <li key={j} dangerouslySetInnerHTML={{ __html: itemText(item) }} />)}</Tag>
+        }
+        if (block.type === 'checklist') {
+          return (
+            <ul key={i} style={{ paddingLeft: 0, listStyle: 'none', marginBottom: 8 }}>
+              {(block.data?.items || []).map((item, j) => (
+                <li key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                  <span style={{ marginTop: 2, flexShrink: 0 }}>{item.checked ? '☑' : '☐'}</span>
+                  <span dangerouslySetInnerHTML={{ __html: item.text || '' }} />
+                </li>
+              ))}
+            </ul>
+          )
+        }
+        if (block.type === 'quote') {
+          return <blockquote key={i} style={{ borderLeft: '3px solid #6366f1', paddingLeft: 12, margin: '8px 0', fontStyle: 'italic', color: '#4b5563' }} dangerouslySetInnerHTML={{ __html: text }} />
+        }
+        if (block.type === 'delimiter') {
+          return <hr key={i} style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+        }
         return text ? <p key={i} style={{ marginBottom: 6 }} dangerouslySetInnerHTML={{ __html: text }} /> : null
       })
     } catch {
