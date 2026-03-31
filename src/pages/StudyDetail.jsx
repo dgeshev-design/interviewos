@@ -176,6 +176,7 @@ export default function StudyDetail() {
   const [previewMode, setPreviewMode] = useState('desktop')
   const [iframeKey, setIframeKey]   = useState(0)
   const previewIframeRef = useRef()
+  const [previewNavStep, setPreviewNavStep] = useState(1) // number | 'book' | 'done'
 
   // Send step to preview iframe via postMessage (no reload needed)
   const sendPreviewStep = useCallback((step) => {
@@ -183,7 +184,7 @@ export default function StudyDetail() {
   }, [])
 
   useEffect(() => {
-    if (formTab === 'fields') sendPreviewStep(activeStep)
+    if (formTab === 'fields') { setPreviewNavStep(activeStep); sendPreviewStep(activeStep) }
   }, [activeStep, formTab])
 
   // Send live branding to preview iframe whenever color/images change
@@ -909,6 +910,32 @@ export default function StudyDetail() {
                   </Button>
                 </div>
               </div>
+              {/* Step nav pills */}
+              {form && (
+                <div className="flex items-center gap-1 flex-wrap mb-3">
+                  {Array.from({ length: stepCount }, (_, i) => i + 1).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => { setPreviewNavStep(s); sendPreviewStep(s) }}
+                      className={cn('px-3 py-1 rounded-md text-xs font-medium transition-colors', previewNavStep === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground')}
+                    >
+                      {form.step_titles?.[s - 1] || `Step ${s}`}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { setPreviewNavStep('book'); sendPreviewStep('book') }}
+                    className={cn('px-3 py-1 rounded-md text-xs font-medium transition-colors', previewNavStep === 'book' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground')}
+                  >
+                    Calendar
+                  </button>
+                  <button
+                    onClick={() => { setPreviewNavStep('done'); sendPreviewStep('done') }}
+                    className={cn('px-3 py-1 rounded-md text-xs font-medium transition-colors', previewNavStep === 'done' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground')}
+                  >
+                    Confirm
+                  </button>
+                </div>
+              )}
               <div className={cn('transition-all duration-200', previewMode === 'mobile' ? 'flex justify-center' : '')}>
                 <div className={cn(
                   'rounded-xl border overflow-hidden shadow-sm',

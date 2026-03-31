@@ -167,36 +167,6 @@ export default function PublicBooking() {
     `}</style>
   )
 
-  // ── Preview step navigator (iframe only) ───────────────────────────────
-  const activeStepNum = step === 'form' ? formStep : step === 'book' ? stepCount + 1 : stepCount + 2
-  const stepNavLabels = [
-    ...Array.from({ length: stepCount }, (_, i) => stepTitles[i] || `Step ${i + 1}`),
-    'Calendar',
-    'Confirm',
-  ]
-  const stepNav = isInIframe ? (
-    <div style={{ width: '100%', background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-      {stepNavLabels.map((label, i) => {
-        const n = i + 1
-        const isActive = n === activeStepNum
-        return (
-          <button
-            key={n}
-            type="button"
-            onClick={() => {
-              if (i < stepCount) { setStep('form'); setFormStep(i + 1) }
-              else if (i === stepCount) setStep('book')
-              else setStep('done')
-            }}
-            style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: isActive ? '#111827' : '#f1f5f9', color: isActive ? '#fff' : '#6b7280' }}
-          >
-            {label}
-          </button>
-        )
-      })}
-    </div>
-  ) : null
-
   const logoEl = (
     <div style={s.logoWrap} className="pb-logo">
       {logoUrl
@@ -223,7 +193,7 @@ export default function PublicBooking() {
   )
 
   if (step === 'done') return (
-    <>{stepNav}<div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
+    <div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
       {logoEl}
       <div style={s.card} className="pb-card">{cardTop}<div style={{...s.cardBody, textAlign:'center'}} className="pb-card-body">
         <div style={{fontSize:40,marginBottom:12}}>✅</div>
@@ -245,7 +215,7 @@ export default function PublicBooking() {
           </>
         )}
       </div></div>
-    </div></div></>{/* stepNav fragment */}
+    </div></div>
   )
 
   if (step === 'book') {
@@ -398,12 +368,12 @@ export default function PublicBooking() {
           </div>
 
         </div></div>
-      </div></div></>{/* stepNav fragment */}
+      </div></div>
     )
   }
 
   return (
-    <>{stepNav}<div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
+    <div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
       {logoEl}
       <div style={s.card} className="pb-card">{cardTop}<div style={s.cardBody} className="pb-card-body">
         <div style={s.h2}>{data?.study?.name || 'Research session'}</div>
@@ -593,6 +563,6 @@ export default function PublicBooking() {
           </button>
         </div>
       </div></div>
-    </div></div></>{/* stepNav fragment */}
+    </div></div>
   )
 }
