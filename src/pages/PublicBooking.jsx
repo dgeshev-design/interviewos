@@ -264,7 +264,7 @@ export default function PublicBooking() {
     }
 
     return (
-      <>{stepNav}<div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
+      <div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
         {logoEl}
         <div style={s.card} className="pb-card">{cardTop}<div style={s.cardBody} className="pb-card-body">
 
