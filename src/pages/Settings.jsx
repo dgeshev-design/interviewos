@@ -32,6 +32,7 @@ export default function Settings() {
 
   const [showTemplate, setShowTemplate]     = useState(false)
   const [editingTemplate, setEditingTemplate] = useState(null)
+  const [templateChannelTab, setTemplateChannelTab] = useState('all')
   const [confirmState, setConfirmState] = useState(null)
   const [wsName, setWsName]                 = useState(workspace?.name || '')
   const [savingWs, setSavingWs]             = useState(false)
@@ -604,33 +605,57 @@ export default function Settings() {
               <p className="text-sm text-muted-foreground mb-3">No templates yet.</p>
               <Button size="sm" onClick={() => setShowTemplate(true)}><Plus className="h-4 w-4 mr-1.5" />Create first template</Button>
             </div>
-           ) : (
-            <div className="space-y-2">
-              {templates.map(t => (
-                <div key={t.id} className="flex items-center justify-between p-3 rounded-md border hover:bg-muted/20 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <Badge variant={CHANNEL_COLORS[t.channel]} className="text-[10px] shrink-0">{t.channel}</Badge>
-                    <div>
-                      <div className="text-sm font-medium">{t.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {TRIGGER_LABELS[t.trigger_type]}
-                        {t.trigger_offset !== 0 && ` · ${Math.abs(t.trigger_offset)} min ${t.trigger_offset < 0 ? 'before' : 'after'}`}
+           ) : (() => {
+            const channels = ['all', 'email', 'whatsapp', 'sms']
+            const filtered = templateChannelTab === 'all' ? templates : templates.filter(t => t.channel === templateChannelTab)
+            return (
+              <>
+                <div className="flex items-center gap-1 mb-4">
+                  {channels.map(c => {
+                    const count = c === 'all' ? templates.length : templates.filter(t => t.channel === c).length
+                    return (
+                      <button
+                        key={c}
+                        onClick={() => setTemplateChannelTab(c)}
+                        className={cn('px-3 py-1 rounded-md text-xs font-medium transition-colors capitalize', templateChannelTab === c ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground')}
+                      >
+                        {c === 'all' ? 'All' : c} <span className="ml-1 opacity-60">{count}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="space-y-2">
+                  {filtered.map(t => (
+                    <div key={t.id} className={cn('flex items-center justify-between p-3 rounded-md border transition-colors', t.enabled === false ? 'opacity-50 bg-muted/20' : 'hover:bg-muted/20')}>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{t.name}</span>
+                          <Badge variant={CHANNEL_COLORS[t.channel]} className="text-[10px]">{t.channel}</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {TRIGGER_LABELS[t.trigger_type]}
+                          {t.trigger_offset !== 0 && ` · ${Math.abs(t.trigger_offset)} min ${t.trigger_offset < 0 ? 'before' : 'after'}`}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={t.enabled !== false}
+                          onCheckedChange={v => update(t.id, { enabled: v })}
+                        />
+                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => openTestSend(t)}>
+                          <Send className="h-3 w-3" /> Test
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditingTemplate(t); setShowTemplate(true) }}>Edit</Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => setConfirmState({ title: 'Delete template?', onConfirm: () => remove(t.id) })}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => openTestSend(t)}>
-                      <Send className="h-3 w-3" /> Test
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditingTemplate(t); setShowTemplate(true) }}>Edit</Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => setConfirmState({ title: 'Delete template?', onConfirm: () => remove(t.id) })}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-           )}
+              </>
+            )
+           })()}
         </CardContent>
       </Card>
         </TabsContent>
