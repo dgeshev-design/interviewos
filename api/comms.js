@@ -40,10 +40,9 @@ async function sendViaSendGrid(to, subject, body, isHtml, apiKey, fromEmail, fro
       personalizations: [{ to: [{ email: to }] }],
       from: { email: fromEmail, ...(fromName ? { name: fromName } : {}) },
       subject: subject || 'Message from InterviewOS',
-      content: [
-        { type: 'text/html', value: isHtml ? body : body.replace(/\n/g, '<br/>') },
-        ...(!isHtml ? [{ type: 'text/plain', value: body }] : []),
-      ],
+      content: isHtml
+        ? [{ type: 'text/html', value: body }]
+        : [{ type: 'text/plain', value: body }, { type: 'text/html', value: body.replace(/\n/g, '<br/>') }],
     }),
   })
   if (!r.ok) {
