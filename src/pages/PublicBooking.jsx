@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { format, parseISO, startOfWeek, addDays, isSameDay, isToday } from 'date-fns'
 import { submitPublicForm } from '@/lib/api'
 import { PHONE_BY_ISO, isPhoneValid } from '@/lib/phoneCodes'
@@ -7,9 +7,11 @@ import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 
 export default function PublicBooking() {
   const { studySlug } = useParams()
+  const [searchParams] = useSearchParams()
+  const initialFormStep = Math.max(1, parseInt(searchParams.get('previewStep') || '1', 10))
   const [data, setData]         = useState(null)
   const [step, setStep]         = useState('form') // form | book | done | disqualified
-  const [formStep, setFormStep] = useState(1)      // which form step (1,2,3)
+  const [formStep, setFormStep] = useState(initialFormStep)
   const [answers, setAnswers]   = useState({})
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [calendarDate, setCalendarDate] = useState(null)

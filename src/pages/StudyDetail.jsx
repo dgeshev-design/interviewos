@@ -591,16 +591,15 @@ export default function StudyDetail() {
           <div className="flex gap-6 items-start">
 
             {/* ── Left sidebar ──────────────────────────────────────────── */}
-            <div className="w-[400px] shrink-0 sticky top-8 max-h-[calc(100vh-160px)] overflow-y-auto rounded-xl border bg-card">
+            <div className="w-[400px] shrink-0 sticky top-8 space-y-3">
               <Tabs value={formTab} onValueChange={setFormTab}>
-                {/* Tabs header — sticks to top of the sidebar box while scrolling */}
-                <div className="sticky top-0 bg-card z-10 px-4 pt-4 pb-3 border-b">
-                  <TabsList className="w-full">
-                    <TabsTrigger value="branding" className="flex-1">Branding</TabsTrigger>
-                    <TabsTrigger value="booking" className="flex-1">Booking</TabsTrigger>
-                    <TabsTrigger value="fields" className="flex-1">Fields</TabsTrigger>
-                  </TabsList>
-                </div>
+                <TabsList className="w-full">
+                  <TabsTrigger value="branding" className="flex-1">Branding</TabsTrigger>
+                  <TabsTrigger value="booking" className="flex-1">Booking</TabsTrigger>
+                  <TabsTrigger value="fields" className="flex-1">Fields</TabsTrigger>
+                </TabsList>
+
+                <div className="rounded-xl border bg-card max-h-[calc(100vh-220px)] overflow-y-auto">
 
                 {/* Branding */}
                 <TabsContent value="branding" className="mt-0 p-4 space-y-5 pb-8">
@@ -856,6 +855,7 @@ export default function StudyDetail() {
                     })()}
                   </div>
                 </TabsContent>
+                </div>
               </Tabs>
             </div>
 
@@ -899,8 +899,8 @@ export default function StudyDetail() {
                     </div>
                   )}
                   <iframe
-                    key={iframeKey}
-                    src={publicUrl}
+                    key={`${iframeKey}-${formTab === 'fields' ? activeStep : 0}`}
+                    src={formTab === 'fields' && activeStep > 1 ? `${publicUrl}?previewStep=${activeStep}` : publicUrl}
                     className="w-full border-0 block"
                     style={{ height: 'calc(100vh - 200px)' }}
                     title="Form preview"
