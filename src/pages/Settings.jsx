@@ -18,12 +18,14 @@ import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Users, Zap, Eye, EyeO
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 const CHANNEL_COLORS = { email: 'blue', whatsapp: 'success', sms: 'secondary' }
 const ROLE_LABELS = { viewer: 'Can view', editor: 'Can edit' }
 
 export default function Settings() {
   useEffect(() => { document.title = 'Settings | InterviewOS' }, [])
+  const [tab, setTab] = useState('general')
   const { workspace, ownWorkspace, user, signInWithGoogle } = useApp()
   const { templates, loading: tLoading, add, update, remove } = useTemplates()
   const { toast } = useToast()
@@ -262,26 +264,38 @@ export default function Settings() {
     <div className="p-8">
       <PageHeader title="Settings" description="Manage your workspace, integrations and message templates" />
 
-      {/* Workspace */}
-      <Card className="shadow-none mb-5">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Workspace</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-1.5">
-            <Label>Workspace name</Label>
-            <div className="flex gap-2">
-              <Input value={wsName} onChange={e => setWsName(e.target.value)} className="max-w-xs" />
-              <Button size="sm" onClick={saveWorkspace} disabled={savingWs}>
-                {savingWs ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="general">General</TabsTrigger>
+          {isOwner && <TabsTrigger value="members">Members</TabsTrigger>}
+          {isOwner && <TabsTrigger value="integrations">Integrations</TabsTrigger>}
+          {isOwner && <TabsTrigger value="ai">AI</TabsTrigger>}
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+        </TabsList>
 
-      {/* Google Calendar integration */}
-      <Card className="shadow-none mb-5">
+        {/* ── GENERAL TAB ── */}
+        <TabsContent value="general" className="space-y-5">
+
+          {/* Workspace name */}
+          <Card className="shadow-none">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">Workspace</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Workspace name</Label>
+                <div className="flex gap-2">
+                  <Input value={wsName} onChange={e => setWsName(e.target.value)} className="max-w-xs" />
+                  <Button size="sm" onClick={saveWorkspace} disabled={savingWs}>
+                    {savingWs ? 'Saving…' : 'Save'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Google Calendar integration */}
+          <Card className="shadow-none">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -338,9 +352,11 @@ export default function Settings() {
         </CardContent>
       </Card>
 
-      {/* Members — only shown when viewing your own workspace */}
-      {isOwner && (
-        <Card className="shadow-none mb-5">
+        </TabsContent>
+
+        {/* ── MEMBERS TAB ── */}
+        <TabsContent value="members">
+          <Card className="shadow-none">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -405,11 +421,11 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
-      )}
+        </TabsContent>
 
-      {/* Integrations — email + Twilio, only for workspace owner */}
-      {isOwner && intgForm && (
-        <Card className="shadow-none mb-5">
+        {/* ── INTEGRATIONS TAB ── */}
+        <TabsContent value="integrations">
+          {intgForm && <Card className="shadow-none">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Zap className="h-4 w-4 text-muted-foreground" />
@@ -500,12 +516,12 @@ export default function Settings() {
               {savingIntg ? 'Saving…' : 'Save integrations'}
             </Button>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
+        </TabsContent>
 
-      {/* AI settings */}
-      {isOwner && (
-        <Card className="shadow-none mb-5">
+        {/* ── AI TAB ── */}
+        <TabsContent value="ai">
+          <Card className="shadow-none">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-muted-foreground" />
@@ -565,10 +581,11 @@ export default function Settings() {
             </Button>
           </CardContent>
         </Card>
-      )}
+        </TabsContent>
 
-      {/* Comms templates */}
-      <Card className="shadow-none">
+        {/* ── TEMPLATES TAB ── */}
+        <TabsContent value="templates">
+          <Card className="shadow-none">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -616,6 +633,9 @@ export default function Settings() {
            )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+      </Tabs>
 
       {showTemplate && (
         <TemplateModal

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Progress } from '@/components/ui/progress'
@@ -410,19 +411,16 @@ export default function StudyDetail() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex rounded-md border overflow-hidden text-xs mb-6 w-fit">
-        {[['participants','Participants'],['form','Form builder'],['summary','Summary']].map(([t, label]) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={cn('px-4 py-2 transition-colors', tab === t ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="participants">Participants</TabsTrigger>
+          <TabsTrigger value="summary">Summary</TabsTrigger>
+          <TabsTrigger value="form">Form builder</TabsTrigger>
+        </TabsList>
 
-      {/* ── PARTICIPANTS TAB ─────────────────────────────────────────────── */}
-      {tab === 'participants' && (
-        <>
+        {/* ── PARTICIPANTS TAB ─────────────────────────────────────────────── */}
+        <TabsContent value="participants">
+          <>
           <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-1 max-w-xs">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -516,10 +514,11 @@ export default function StudyDetail() {
             </CardContent>
           </Card>
         </>
-      )}
+        </TabsContent>
 
-      {/* ── SUMMARY TAB ──────────────────────────────────────────────────── */}
-      {tab === 'summary' && (() => {
+        {/* ── SUMMARY TAB ──────────────────────────────────────────────────── */}
+        <TabsContent value="summary">
+        {(() => {
         const allQuotes = participants.flatMap(p => (p.quotes || []).map(q => ({ ...q, participantName: p.name })))
         return (
           <div className={allQuotes.length ? 'grid grid-cols-3 gap-4' : ''}>
@@ -580,9 +579,10 @@ export default function StudyDetail() {
           </div>
         )
       })()}
+        </TabsContent>
 
-      {/* ── FORM BUILDER TAB ─────────────────────────────────────────────── */}
-      {tab === 'form' && (
+        {/* ── FORM BUILDER TAB ─────────────────────────────────────────────── */}
+        <TabsContent value="form">{(
         formLoading ? <p className="text-sm text-muted-foreground">Loading form…</p> :
         form ? (
           <div className="space-y-5">
@@ -886,6 +886,9 @@ export default function StudyDetail() {
           </div>
         ) : <p className="text-sm text-muted-foreground">Failed to load form.</p>
       )}
+        </TabsContent>
+
+      </Tabs>
 
       {/* ── Add participant dialog ─────────────────────────────────────── */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
