@@ -62,6 +62,7 @@ export default function ParticipantProfile() {
   const [fileUrls, setFileUrls]       = useState({})
   const [cancelling, setCancelling]   = useState(false)
   const [commsSettings, setCommsSettings] = useState(null)
+  const [summaryKey, setSummaryKey]   = useState(0)
   const [aiSettings, setAiSettings]   = useState(null)
   const [aiLoading, setAiLoading]     = useState('')  // '' | 'quotes' | 'summary'
 
@@ -136,9 +137,16 @@ export default function ParticipantProfile() {
         ai_settings: aiSettings,
       })
       if (result.error) throw new Error(result.error)
-      const summary = result.summary || ''
+      // Convert plain text paragraphs to EditorJS JSON
+      const blocks = (result.summary || '').split(/\n\n+/).filter(Boolean).map(para => ({
+        id: crypto.randomUUID(),
+        type: 'paragraph',
+        data: { text: para.replace(/\n/g, '<br>') },
+      }))
+      const summary = JSON.stringify({ time: Date.now(), blocks, version: '2.28.0' })
       setForm(f => ({ ...f, summary }))
       autoSave({ summary })
+      setSummaryKey(k => k + 1)
       toast({ title: 'Summary generated', variant: 'success', action: <ToastAction altText="View summary" onClick={() => setTab('overview')}>View</ToastAction> })
     } catch (e) {
       toast({ title: 'AI error', description: e.message, variant: 'destructive' })
@@ -392,10 +400,10 @@ export default function ParticipantProfile() {
                 <CardHeader className="pb-3"><CardTitle className="text-sm">Session summary</CardTitle></CardHeader>
                 <CardContent>
                   {editing ? (
-                    <NotionEditor value={form.summary||''} onChange={v => setForm(f=>({...f,summary:v}))} placeholder="Write a summary of this session…" />
+                    <NotionEditor key={`edit-${summaryKey}`} value={form.summary||''} onChange={v => { setForm(f=>({...f,summary:v})); autoSave({ summary: v }) }} placeholder="Write a summary of this session…" />
                   ) : (
                     form.summary
-                      ? <NotionEditor value={form.summary} readOnly />
+                      ? <NotionEditor key={`read-${summaryKey}`} value={form.summary} readOnly />
                       : <p className="text-sm text-muted-foreground">No summary yet.</p>
                   )}
                 </CardContent>
