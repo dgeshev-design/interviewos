@@ -254,7 +254,7 @@ export default function ParticipantProfile() {
       <Tabs value={activeTab} onValueChange={setTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="notes">Notes & Quotes</TabsTrigger>
+          <TabsTrigger value="transcript">Transcript</TabsTrigger>
           <TabsTrigger value="uploads">Uploads</TabsTrigger>
           <TabsTrigger value="comms">Comms</TabsTrigger>
         </TabsList>
@@ -458,27 +458,56 @@ export default function ParticipantProfile() {
           </div>
         </TabsContent>
 
-        {/* ── Notes & Quotes ── */}
-        <TabsContent value="notes">
+        {/* ── Transcript ── */}
+        <TabsContent value="transcript">
           <div className="grid grid-cols-3 gap-4">
             <div className="col-span-2">
               <Card className="shadow-none">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">Session notes</CardTitle>
-                    {selectedText && (
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => addQuote(selectedText)}>
-                        <Quote className="h-3 w-3" /> Add as quote
-                      </Button>
-                    )}
+                    <CardTitle className="text-sm">Session transcript</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {selectedText && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => addQuote(selectedText)}>
+                          <Quote className="h-3 w-3" /> Add as quote
+                        </Button>
+                      )}
+                      <label className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium cursor-pointer border border-input bg-background hover:bg-accent transition-colors">
+                        <Upload className="h-3 w-3" /> Upload .txt
+                        <input
+                          type="file" accept=".txt,.vtt,.srt" className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const reader = new FileReader()
+                            reader.onload = ev => {
+                              const text = ev.target.result
+                              setForm(f => ({ ...f, transcript: text }))
+                              autoSave({ transcript: text })
+                              toast({ title: 'Transcript loaded', variant: 'success' })
+                            }
+                            reader.readAsText(file)
+                            e.target.value = ''
+                          }}
+                        />
+                      </label>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <NotionEditor
-                    value={form.notes||''}
-                    onChange={v => { setForm(f=>({...f,notes:v})); autoSave({ notes: v }) }}
-                    placeholder="Take notes during or after the session. Select any text to add it as a quote."
-                    onTextSelect={setSelectedText}
+                  <textarea
+                    className="w-full min-h-[360px] text-sm rounded-md border bg-background px-3 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-ring font-mono leading-relaxed"
+                    placeholder="Paste your session transcript here, or upload a .txt file above…"
+                    value={form.transcript || ''}
+                    onChange={e => { setForm(f => ({ ...f, transcript: e.target.value })); autoSave({ transcript: e.target.value }) }}
+                    onMouseUp={e => {
+                      const { selectionStart, selectionEnd, value } = e.target
+                      setSelectedText(value.substring(selectionStart, selectionEnd).trim())
+                    }}
+                    onKeyUp={e => {
+                      const { selectionStart, selectionEnd, value } = e.target
+                      setSelectedText(value.substring(selectionStart, selectionEnd).trim())
+                    }}
                   />
                 </CardContent>
               </Card>
@@ -487,14 +516,12 @@ export default function ParticipantProfile() {
             <div>
               <Card className="shadow-none">
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">Key quotes</CardTitle>
-                  </div>
+                  <CardTitle className="text-sm">Key quotes</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3 mb-3">
                     {(form.quotes||[]).length === 0 && (
-                      <p className="text-xs text-muted-foreground">Select text in notes to add quotes.</p>
+                      <p className="text-xs text-muted-foreground">Select text in the transcript to add quotes.</p>
                     )}
                     {(form.quotes||[]).map(q => (
                       <div key={q.id} className="quote-card p-3 relative group">
