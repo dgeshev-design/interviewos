@@ -23,7 +23,7 @@ export default function Sidebar() {
   const isOwned = workspace?.id === ownWorkspace?.id
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 w-[220px] flex flex-col border-r bg-card">
+    <aside className="fixed inset-y-0 left-0 z-50 w-[220px] flex flex-col border-r bg-white">
       {/* Logo */}
       <div className="h-14 flex items-center px-5 border-b">
         <span className="font-semibold text-[15px] tracking-tight text-foreground">
@@ -45,7 +45,7 @@ export default function Sidebar() {
             <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground ml-1" />
           </button>
           {switcherOpen && (
-            <div className="absolute left-3 right-3 top-full mt-1 z-50 rounded-md border bg-card shadow-md py-1">
+            <div className="absolute left-3 right-3 top-full mt-1 z-50 rounded-md border bg-white shadow-md py-1">
               {workspaces.map(ws => (
                 <button
                   key={ws.id}

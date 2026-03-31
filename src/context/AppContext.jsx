@@ -2,13 +2,6 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { supabase } from '@/lib/supabase'
 import { saveGoogleToken } from '@/lib/api'
 
-// Apply Betty theme before React hydration (also done in index.html, this keeps state in sync)
-const BETTY_KEY = 'bettyMode'
-function applyBetty(on) {
-  if (on) document.documentElement.setAttribute('data-theme', 'betty')
-  else document.documentElement.removeAttribute('data-theme')
-}
-
 const AppContext = createContext(null)
 
 const ALLOWED_DOMAINS = (import.meta.env.VITE_ALLOWED_DOMAINS || 'betty.com')
@@ -24,16 +17,6 @@ export function AppProvider({ children }) {
   const [canEdit, setCanEdit]         = useState(true)
   const [loading, setLoading]         = useState(true)
   const [authError, setAuthError]     = useState(null)
-
-  // ── Betty mode ────────────────────────────────────────────────────────
-  const [bettyMode, setBettyModeState] = useState(() => localStorage.getItem(BETTY_KEY) === 'true')
-
-  const toggleBettyMode = useCallback((val) => {
-    const next = typeof val === 'boolean' ? val : !bettyMode
-    setBettyModeState(next)
-    localStorage.setItem(BETTY_KEY, String(next))
-    applyBetty(next)
-  }, [bettyMode])
 
   // ── Studies cache ──────────────────────────────────────────────────────
   const [studies, setStudies]           = useState([])
@@ -265,7 +248,6 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       user, workspace, ownWorkspace, workspaces, canEdit, loading, authError,
       signInWithGoogle, signOut, switchWorkspace,
-      bettyMode, toggleBettyMode,
       // Studies
       studies, studiesLoading,
       addStudy, updateStudy, removeStudy, duplicateStudy,

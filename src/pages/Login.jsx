@@ -1,11 +1,10 @@
 import { useEffect } from 'react'
 import { useApp } from '@/context/AppContext'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 
 export default function Login() {
   useEffect(() => { document.title = 'InterviewOS' }, [])
-  const { signInWithGoogle, authError, bettyMode, toggleBettyMode } = useApp()
+  const { signInWithGoogle, authError } = useApp()
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -46,12 +45,6 @@ export default function Login() {
         <p className="text-center text-xs text-muted-foreground mt-6">
           Each account has a fully isolated private workspace.
         </p>
-
-        {/* Betty mode toggle */}
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <span className="text-xs text-muted-foreground">Betty mode</span>
-          <Switch checked={bettyMode} onCheckedChange={toggleBettyMode} />
-        </div>
       </div>
     </div>
   )
