@@ -227,6 +227,37 @@
   background-color: #121212 !important;
 }
 
+/* ── DM Sans cascade — override Tailwind's font-sans on all elements ── */
+[data-theme="betty"] h1,
+[data-theme="betty"] h2,
+[data-theme="betty"] h3,
+[data-theme="betty"] h4,
+[data-theme="betty"] p,
+[data-theme="betty"] span,
+[data-theme="betty"] div,
+[data-theme="betty"] button,
+[data-theme="betty"] a,
+[data-theme="betty"] label,
+[data-theme="betty"] input,
+[data-theme="betty"] textarea,
+[data-theme="betty"] select {
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+/* ── Sidebar active nav item — gold instead of brand purple ── */
+[data-theme="betty"] .bg-brand-50 { background-color: rgba(255, 196, 0, 0.12) !important; }
+[data-theme="betty"] .text-brand-600 { color: #FFC400 !important; }
+[data-theme="betty"] .text-brand-500 { color: #FFC400 !important; }
+
+/* ── Calendar available slot / legend / banner — gold tint instead of green ── */
+[data-theme="betty"] .bg-green-50,
+[data-theme="betty"] .bg-green-50\/80 { background-color: rgba(255, 196, 0, 0.08) !important; }
+[data-theme="betty"] .border-green-100,
+[data-theme="betty"] .border-green-200 { border-color: rgba(255, 196, 0, 0.2) !important; }
+[data-theme="betty"] .text-green-700,
+[data-theme="betty"] .text-green-600 { color: #FFC400 !important; }
+[data-theme="betty"] .bg-green-400 { background-color: #FFC400 !important; }
+
 /* ── Editor.js heading styles — outside @layer to beat Tailwind preflight */
 h1.ce-header { font-size: 1.75rem; font-weight: 700; line-height: 1.25; margin: 0.5rem 0 0.25rem; }
 h2.ce-header { font-size: 1.35rem; font-weight: 600; line-height: 1.3;  margin: 0.5rem 0 0.2rem; }

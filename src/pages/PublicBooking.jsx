@@ -7,6 +7,14 @@ import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 
 export default function PublicBooking() {
   const { studySlug } = useParams()
+
+  // Strip Betty theme so the public form is never affected
+  useEffect(() => {
+    const html = document.documentElement
+    const prev = html.getAttribute('data-theme')
+    html.removeAttribute('data-theme')
+    return () => { if (prev) html.setAttribute('data-theme', prev) }
+  }, [])
   const [data, setData]         = useState(null)
   const [step, setStep]         = useState('form') // form | book | done | disqualified
   const [formStep, setFormStep] = useState(1)      // which form step (1,2,3)
