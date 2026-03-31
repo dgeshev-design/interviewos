@@ -182,6 +182,23 @@ export default function ParticipantProfile() {
     setAiLoading('')
   }
 
+  const highlightMatch = (text, term) => {
+    if (!term) return text
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const parts = text.split(new RegExp(`(${escaped})`, 'gi'))
+    return parts.map((part, i) =>
+      part.toLowerCase() === term.toLowerCase()
+        ? <mark key={i} className="bg-yellow-200 rounded-sm px-0.5">{part}</mark>
+        : part
+    )
+  }
+
+  const dismissSearchQuote = (q) => {
+    const remaining = searchResult.quotes.filter(r => r !== q)
+    if (remaining.length === 0) setSearchResult(null)
+    else setSearchResult(r => ({ ...r, quotes: remaining }))
+  }
+
   const searchTranscript = async () => {
     if (!form.transcript || !quoteSearch.trim() || !aiSettings?.api_key) return
     setAiLoading('search')
@@ -631,11 +648,18 @@ export default function ParticipantProfile() {
                   <div className="px-6 pb-4 space-y-2">
                     {searchResult.found ? (
                       <>
-                        <p className="text-xs text-muted-foreground">Found {searchResult.quotes.length} mention{searchResult.quotes.length !== 1 ? 's' : ''} of <span className="font-medium">"{quoteSearch}"</span></p>
+                        <p className="text-xs text-muted-foreground">
+                          Found {searchResult.quotes.length} mention{searchResult.quotes.length !== 1 ? 's' : ''} of <span className="font-medium">"{quoteSearch}"</span>
+                        </p>
                         {searchResult.quotes.map((q, i) => (
-                          <div key={i} className="flex items-start justify-between gap-2 p-2.5 rounded-md border bg-muted/20">
-                            <p className="text-sm italic flex-1">"{q}"</p>
-                            <Button size="sm" variant="ghost" className="h-6 text-xs shrink-0 px-2" onClick={() => addQuote(q)}>+ Add</Button>
+                          <div key={i} className="flex items-start gap-2 p-2.5 rounded-md border bg-muted/20">
+                            <p className="text-sm italic flex-1">"{highlightMatch(q, quoteSearch)}"</p>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => { addQuote(q); dismissSearchQuote(q) }}>+ Add</Button>
+                              <button className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-destructive" onClick={() => dismissSearchQuote(q)}>
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </>
