@@ -477,6 +477,33 @@ export default function StudyDetail() {
       {/* ── SUMMARY TAB ──────────────────────────────────────────────────── */}
       {tab === 'summary' && (
         <div className="space-y-4">
+          <Card className="shadow-none">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm">Study summary</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">This summary appears at the top of your shareable report.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {savingSynthesis && <span className="text-xs text-muted-foreground">Saving…</span>}
+                  {aiSettings?.enabled && aiSettings?.api_key && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={generateSynthesisWithAI} disabled={generatingSynthesis}>
+                      <Sparkles className="h-3 w-3" />
+                      {generatingSynthesis ? 'Generating…' : 'AI synthesis'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <NotionEditor
+                value={synthesis}
+                onChange={autoSaveSynthesis}
+                placeholder="Write a synthesis or summary of this study…"
+              />
+            </CardContent>
+          </Card>
+
           {/* All quotes from participants */}
           {(() => {
             const allQuotes = participants.flatMap(p => (p.quotes || []).map(q => ({ ...q, participantName: p.name })))
@@ -502,33 +529,6 @@ export default function StudyDetail() {
               </Card>
             )
           })()}
-
-          <Card className="shadow-none">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-sm">Study summary</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">This summary appears at the top of your shareable report.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {savingSynthesis && <span className="text-xs text-muted-foreground">Saving…</span>}
-                  {aiSettings?.api_key && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={generateSynthesisWithAI} disabled={generatingSynthesis}>
-                      <Sparkles className="h-3 w-3" />
-                      {generatingSynthesis ? 'Generating…' : 'AI synthesis'}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <NotionEditor
-                value={synthesis}
-                onChange={autoSaveSynthesis}
-                placeholder="Write a synthesis or summary of this study…"
-              />
-            </CardContent>
-          </Card>
         </div>
       )}
 

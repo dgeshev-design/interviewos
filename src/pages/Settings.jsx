@@ -16,6 +16,7 @@ import PageHeader from '@/components/layout/PageHeader'
 import { useToast } from '@/hooks/use-toast'
 import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Users, Zap, Eye, EyeOff, Sparkles } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 
 const CHANNEL_COLORS = { email: 'blue', whatsapp: 'success', sms: 'secondary' }
 const ROLE_LABELS = { viewer: 'Can view', editor: 'Can edit' }
@@ -48,7 +49,7 @@ export default function Settings() {
   const [showSecrets, setShowSecrets] = useState({}) // { fieldKey: bool }
 
   // AI settings state
-  const [aiForm, setAiForm]       = useState({ provider: 'openai', api_key: '', model: '' })
+  const [aiForm, setAiForm]       = useState({ provider: 'openai', api_key: '', model: '', enabled: true })
   const [savingAi, setSavingAi]   = useState(false)
   const [showAiKey, setShowAiKey] = useState(false)
 
@@ -108,7 +109,7 @@ export default function Settings() {
       })
     supabase.from('ai_settings').select('*').eq('workspace_id', ownWorkspace.id).maybeSingle()
       .then(({ data }) => {
-        if (data) setAiForm({ provider: data.provider || 'openai', api_key: data.api_key || '', model: data.model || '' })
+        if (data) setAiForm({ provider: data.provider || 'openai', api_key: data.api_key || '', model: data.model || '', enabled: data.enabled !== false })
       })
   }, [ownWorkspace])
 
@@ -508,6 +509,15 @@ export default function Settings() {
             <CardDescription>Configure an AI provider to auto-extract quotes and generate summaries from transcripts.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Enable AI features</p>
+                <p className="text-xs text-muted-foreground">When off, all AI buttons are hidden across the app.</p>
+              </div>
+              <Switch checked={aiForm.enabled} onCheckedChange={v => setAiForm(f => ({ ...f, enabled: v }))} />
+            </div>
+
+            <div className={aiForm.enabled ? '' : 'opacity-50 pointer-events-none'}>
             <div className="space-y-1.5">
               <Label className="text-xs">Provider</Label>
               <Select value={aiForm.provider} onValueChange={v => setAiForm(f => ({ ...f, provider: v }))}>
@@ -543,6 +553,8 @@ export default function Settings() {
                 className="font-mono text-sm max-w-md"
               />
             </div>
+            </div>
+
             <Button size="sm" onClick={handleSaveAI} disabled={savingAi}>
               {savingAi ? 'Saving…' : 'Save AI settings'}
             </Button>

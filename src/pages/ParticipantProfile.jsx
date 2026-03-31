@@ -522,7 +522,7 @@ export default function ParticipantProfile() {
                           <Quote className="h-3 w-3" /> Add as quote
                         </Button>
                       )}
-                      {aiSettings?.api_key && form.transcript && (
+                      {aiSettings?.enabled && aiSettings?.api_key && form.transcript && (
                         <>
                           <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={markQuotesWithAI} disabled={!!aiLoading}>
                             <Sparkles className="h-3 w-3" />
