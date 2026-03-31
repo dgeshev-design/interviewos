@@ -101,7 +101,133 @@
   .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
 }
 
-/* Editor.js heading styles — outside @layer to beat Tailwind preflight */
+/* ── Betty Theme ──────────────────────────────────────────────────────────── */
+[data-theme="betty"] {
+  --background:             0 0% 7%;       /* #121212 */
+  --foreground:             0 0% 96%;      /* #F5F5F5 */
+  --card:                   0 0% 10%;      /* #191919 surface primary */
+  --card-foreground:        0 0% 96%;
+  --popover:                0 0% 16%;      /* #2A2A2A surface secondary */
+  --popover-foreground:     0 0% 96%;
+  --primary:                45 100% 50%;   /* #FFC400 gold solid fallback */
+  --primary-foreground:     0 0% 0%;       /* black text on gold */
+  --secondary:              0 0% 16%;      /* #2A2A2A */
+  --secondary-foreground:   0 0% 96%;
+  --muted:                  0 0% 16%;
+  --muted-foreground:       0 0% 53%;      /* #888 */
+  --accent:                 0 0% 16%;
+  --accent-foreground:      0 0% 96%;
+  --destructive:            0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border:                 0 0% 26%;      /* #424242 */
+  --input:                  0 0% 16%;
+  --ring:                   45 100% 50%;   /* gold focus ring */
+  --radius:                 0.5rem;
+
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+/* Body bg + font for Betty */
+[data-theme="betty"] body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background-color: #121212;
+  color: #F5F5F5;
+}
+
+/* ── Gold gradient on all primary buttons ── */
+[data-theme="betty"] button.bg-primary,
+[data-theme="betty"] [class~="bg-primary"] {
+  background: linear-gradient(92deg, #FFEA9B 0%, #FFC400 88.31%, #FFE168 104.38%) !important;
+  color: #111 !important;
+  border-color: rgba(255, 199, 0, 1) !important;
+}
+
+/* Active / selected tab trigger in Betty */
+[data-theme="betty"] [data-state="active"][role="tab"] {
+  background: linear-gradient(92deg, #FFEA9B 0%, #FFC400 88.31%, #FFE168 104.38%);
+  color: #111 !important;
+  box-shadow: none;
+}
+
+/* TabsList bg */
+[data-theme="betty"] [role="tablist"] {
+  background-color: #191919;
+  border: 1px solid #424242;
+}
+
+/* Focus rings */
+[data-theme="betty"] *:focus-visible {
+  outline-color: rgba(255, 199, 0, 1);
+  box-shadow: 0 0 0 2px rgba(255, 199, 0, 0.3);
+}
+
+/* Input borders + focus */
+[data-theme="betty"] input,
+[data-theme="betty"] textarea,
+[data-theme="betty"] select {
+  background-color: #191919 !important;
+  border-color: #424242 !important;
+  color: #F5F5F5 !important;
+}
+[data-theme="betty"] input:focus,
+[data-theme="betty"] textarea:focus {
+  border-color: rgba(255, 199, 0, 1) !important;
+  box-shadow: 0 0 0 2px rgba(255, 199, 0, 0.2) !important;
+}
+
+/* Sidebar / layout surface */
+[data-theme="betty"] nav,
+[data-theme="betty"] aside,
+[data-theme="betty"] header {
+  background-color: #191919 !important;
+  border-color: #424242 !important;
+}
+
+/* Cards */
+[data-theme="betty"] .shadow-none,
+[data-theme="betty"] [class*="rounded"][class*="border"] {
+  border-color: #424242;
+}
+
+/* EditorJS toolbars in Betty */
+[data-theme="betty"] .ce-inline-toolbar,
+[data-theme="betty"] .ce-conversion-toolbar,
+[data-theme="betty"] .ce-settings {
+  background: #191919 !important;
+  border-color: #424242 !important;
+}
+[data-theme="betty"] .ce-inline-tool,
+[data-theme="betty"] .ce-conversion-tool,
+[data-theme="betty"] .ce-inline-tool:hover,
+[data-theme="betty"] .ce-conversion-tool:hover {
+  background: #2A2A2A !important;
+  color: #F5F5F5 !important;
+}
+
+/* Dropdowns / select content */
+[data-theme="betty"] [role="listbox"],
+[data-theme="betty"] [data-radix-popper-content-wrapper] > div {
+  background-color: #191919 !important;
+  border-color: #424242 !important;
+  color: #F5F5F5 !important;
+}
+
+/* Dialog / modal */
+[data-theme="betty"] [role="dialog"] {
+  background-color: #191919 !important;
+  border-color: #424242 !important;
+}
+
+/* Scrollbar for Betty */
+[data-theme="betty"] ::-webkit-scrollbar-thumb { background: #424242; }
+[data-theme="betty"] ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* Betty mode login page bg */
+[data-theme="betty"] .min-h-screen.flex.items-center {
+  background-color: #121212 !important;
+}
+
+/* ── Editor.js heading styles — outside @layer to beat Tailwind preflight */
 h1.ce-header { font-size: 1.75rem; font-weight: 700; line-height: 1.25; margin: 0.5rem 0 0.25rem; }
 h2.ce-header { font-size: 1.35rem; font-weight: 600; line-height: 1.3;  margin: 0.5rem 0 0.2rem; }
 h3.ce-header { font-size: 1.1rem;  font-weight: 600; line-height: 1.4;  margin: 0.4rem 0 0.15rem; }

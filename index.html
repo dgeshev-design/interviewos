@@ -6,7 +6,13 @@
     <title>InterviewOS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+    <script>
+      // Apply Betty theme before first paint to avoid flash
+      if (localStorage.getItem('bettyMode') === 'true') {
+        document.documentElement.setAttribute('data-theme', 'betty')
+      }
+    </script>
     <link rel="icon" type="image/png" href="/interviewosfav.png" />
   </head>
   <body>
