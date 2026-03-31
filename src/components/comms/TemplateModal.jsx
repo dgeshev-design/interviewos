@@ -64,10 +64,10 @@ export default function TemplateModal({ open, onClose, onSave, initial }) {
           <DialogTitle>{initial?.id ? 'Edit template' : 'New template'}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-5 gap-6 py-2">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 py-2">
 
           {/* ── Left: Preview ── */}
-          <div className="col-span-2 space-y-3">
+          <div className="md:col-span-2 space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preview</p>
 
             {/* SMS char counter */}
@@ -77,7 +77,7 @@ export default function TemplateModal({ open, onClose, onSave, initial }) {
               </div>
             )}
 
-            <div className="rounded-lg border bg-muted/20 overflow-hidden" style={{ minHeight: 300 }}>
+            <div className="rounded-lg border bg-muted/20 overflow-hidden" style={{ minHeight: 300, maxHeight: 480, overflowY: 'auto' }}>
               {form.channel === 'email' ? (
                 <div className="flex flex-col h-full">
                   {previewSubject && (
@@ -89,16 +89,10 @@ export default function TemplateModal({ open, onClose, onSave, initial }) {
                   {form.is_html ? (
                     <iframe
                       srcDoc={previewBody || '<p style="color:#9ca3af;font-size:13px;padding:16px">Preview will appear here…</p>'}
-                      className="w-full border-0 flex-1"
-                      style={{ height: 420 }}
+                      className="w-full border-0"
+                      style={{ height: 460, display: 'block' }}
                       sandbox="allow-same-origin"
                       title="Email preview"
-                      onLoad={e => {
-                        try {
-                          const doc = e.target.contentDocument
-                          if (doc) e.target.style.height = doc.documentElement.scrollHeight + 'px'
-                        } catch {}
-                      }}
                     />
                   ) : (
                     <div className="p-4 flex-1">
@@ -132,7 +126,7 @@ export default function TemplateModal({ open, onClose, onSave, initial }) {
           </div>
 
           {/* ── Right: Form ── */}
-          <div className="col-span-3 space-y-4">
+          <div className="md:col-span-3 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Template name</Label>
