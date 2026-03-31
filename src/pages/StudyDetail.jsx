@@ -80,10 +80,11 @@ export default function StudyDetail() {
   const [copiedReport, setCopiedReport] = useState(false)
 
   // Summary tab
-  const [synthesis, setSynthesis]       = useState('')
+  const [synthesis, setSynthesis]           = useState('')
   const [savingSynthesis, setSavingSynthesis] = useState(false)
-  const [aiSettings, setAiSettings]     = useState(null)
+  const [aiSettings, setAiSettings]         = useState(null)
   const [generatingSynthesis, setGeneratingSynthesis] = useState(false)
+  const [synthesisKey, setSynthesisKey]     = useState(0)
   const synthesisTimer = useRef(null)
   useEffect(() => { if (study?.synthesis != null) setSynthesis(study.synthesis) }, [study?.id])
   useEffect(() => {
@@ -118,8 +119,20 @@ export default function StudyDetail() {
     try {
       const result = await callAI({ action: 'generate-synthesis', quotes: allQuotes, ai_settings: aiSettings })
       if (result.error) throw new Error(result.error)
-      const text = result.synthesis || ''
-      autoSaveSynthesis(text)
+      // Convert plain text to EditorJS JSON blocks
+      const rawBlocks = []
+      for (const chunk of (result.synthesis || '').split(/\n\n+/).filter(Boolean)) {
+        for (const line of chunk.split('\n').map(l => l.trim()).filter(Boolean)) {
+          const isHeader = line.length < 60 && !/[.!?,]$/.test(line)
+          rawBlocks.push(isHeader
+            ? { id: crypto.randomUUID(), type: 'header', data: { text: line, level: 3 } }
+            : { id: crypto.randomUUID(), type: 'paragraph', data: { text: line } }
+          )
+        }
+      }
+      const json = JSON.stringify({ time: Date.now(), blocks: rawBlocks, version: '2.28.0' })
+      autoSaveSynthesis(json)
+      setSynthesisKey(k => k + 1)
       toast({ title: 'Synthesis generated', variant: 'success' })
     } catch (e) {
       toast({ title: 'AI error', description: e.message, variant: 'destructive' })
@@ -475,62 +488,67 @@ export default function StudyDetail() {
       )}
 
       {/* ── SUMMARY TAB ──────────────────────────────────────────────────── */}
-      {tab === 'summary' && (
-        <div className="space-y-4">
-          <Card className="shadow-none">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-sm">Study summary</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">This summary appears at the top of your shareable report.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {savingSynthesis && <span className="text-xs text-muted-foreground">Saving…</span>}
-                  {aiSettings?.enabled && aiSettings?.api_key && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={generateSynthesisWithAI} disabled={generatingSynthesis}>
-                      <Sparkles className="h-3 w-3" />
-                      {generatingSynthesis ? 'Generating…' : 'AI synthesis'}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <NotionEditor
-                value={synthesis}
-                onChange={autoSaveSynthesis}
-                placeholder="Write a synthesis or summary of this study…"
-              />
-            </CardContent>
-          </Card>
-
-          {/* All quotes from participants */}
-          {(() => {
-            const allQuotes = participants.flatMap(p => (p.quotes || []).map(q => ({ ...q, participantName: p.name })))
-            if (!allQuotes.length) return null
-            return (
+      {tab === 'summary' && (() => {
+        const allQuotes = participants.flatMap(p => (p.quotes || []).map(q => ({ ...q, participantName: p.name })))
+        return (
+          <div className={allQuotes.length ? 'grid grid-cols-3 gap-4' : ''}>
+            {/* Left: synthesis editor */}
+            <div className={allQuotes.length ? 'col-span-2' : ''}>
               <Card className="shadow-none">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Quote className="h-4 w-4 text-muted-foreground" />
-                    All quotes ({allQuotes.length})
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-sm">Study summary</CardTitle>
+                      <p className="text-xs text-muted-foreground mt-1">This summary appears at the top of your shareable report.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {savingSynthesis && <span className="text-xs text-muted-foreground">Saving…</span>}
+                      {aiSettings?.enabled && aiSettings?.api_key && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={generateSynthesisWithAI} disabled={generatingSynthesis}>
+                          <Sparkles className="h-3 w-3" />
+                          {generatingSynthesis ? 'Generating…' : 'AI synthesis'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {allQuotes.map(q => (
-                      <div key={q.id} className="p-3 rounded-md border bg-muted/20">
-                        <p className="text-sm italic">"{q.text}"</p>
-                        <p className="text-xs text-muted-foreground mt-1">— {q.participantName}</p>
-                      </div>
-                    ))}
-                  </div>
+                  <NotionEditor
+                    key={synthesisKey}
+                    value={synthesis}
+                    onChange={autoSaveSynthesis}
+                    placeholder="Write a synthesis or summary of this study…"
+                  />
                 </CardContent>
               </Card>
-            )
-          })()}
-        </div>
-      )}
+            </div>
+
+            {/* Right: all quotes */}
+            {allQuotes.length > 0 && (
+              <div>
+                <Card className="shadow-none">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Quote className="h-4 w-4 text-muted-foreground" />
+                      All quotes ({allQuotes.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {allQuotes.map(q => (
+                        <div key={q.id} className="p-3 rounded-md border bg-muted/20">
+                          <p className="text-sm italic">"{q.text}"</p>
+                          <p className="text-xs text-muted-foreground mt-1">— {q.participantName}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── FORM BUILDER TAB ─────────────────────────────────────────────── */}
       {tab === 'form' && (

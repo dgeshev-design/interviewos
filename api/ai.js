@@ -113,7 +113,7 @@ export default async function handler(req, res) {
 
       const messages = [{
         role: 'user',
-        content: `You are a UX research analyst. Based on the following quotes from multiple participant interviews, write a synthesis that identifies key themes, patterns, pain points and opportunities. Structure it clearly with sections. Be analytical and actionable.\n\nQuotes:\n${quotesList}`,
+        content: `You are a UX research analyst. Based on the following quotes from multiple participant interviews, write a structured synthesis with 3-5 named sections (e.g. "Key themes", "Pain points", "Opportunities", "Behaviours"). Format as plain text only — no markdown, no asterisks, no bullet dashes. Each section: write the section title on its own line, then one or two paragraphs below it. Separate sections with a blank line. Be analytical and actionable.\n\nQuotes:\n${quotesList}`,
       }]
 
       const synthesis = await callAI(messages, ai_settings)
