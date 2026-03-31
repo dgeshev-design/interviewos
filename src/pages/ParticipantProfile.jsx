@@ -136,8 +136,8 @@ export default function ParticipantProfile() {
       })
       if (result.error) throw new Error(result.error)
       const summary = result.summary || ''
-      setForm(f => ({ ...f, notes: summary }))
-      autoSave({ notes: summary })
+      setForm(f => ({ ...f, summary }))
+      autoSave({ summary })
       toast({ title: 'Summary generated', variant: 'success' })
     } catch (e) {
       toast({ title: 'AI error', description: e.message, variant: 'destructive' })
