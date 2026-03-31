@@ -164,8 +164,8 @@ export default function ParticipantProfile() {
       }
       const summary = JSON.stringify({ time: Date.now(), blocks: rawBlocks, version: '2.28.0' })
       setForm(f => ({ ...f, summary }))
-      autoSave({ summary })
       setSummaryKey(k => k + 1)
+      await update(participantId, { summary })
       toast({ title: 'Summary generated', variant: 'success', action: <ToastAction altText="View summary" onClick={() => setTab('overview')}>View</ToastAction> })
     } catch (e) {
       toast({ title: 'AI error', description: e.message, variant: 'destructive' })

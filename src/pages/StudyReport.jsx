@@ -75,9 +75,10 @@ export default function StudyReport() {
   if (loading) return <div style={s.page}><div style={{...s.wrap, color:'#9ca3af',fontSize:14}}>Loading report…</div></div>
   if (error)   return <div style={s.page}><div style={s.wrap}><div style={s.err}>{error}</div></div></div>
 
-  const { study, participants } = data
   const [openIds, setOpenIds] = useState(new Set())
   const toggle = useCallback((id) => setOpenIds(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n }), [])
+
+  const { study, participants } = data || {}
 
   return (
     <div style={s.page}>
