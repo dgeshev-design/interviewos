@@ -399,7 +399,7 @@ export default function StudyDetail() {
 
       {/* Progress */}
       {study && (
-        <div className="flex items-center gap-3 mb-6 p-4 rounded-lg border bg-white">
+        <div className="flex items-center gap-3 mb-6 p-4 rounded-lg border bg-card">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-medium">Study progress</span>

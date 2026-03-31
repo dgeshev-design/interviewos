@@ -26,7 +26,7 @@ const ROLE_LABELS = { viewer: 'Can view', editor: 'Can edit' }
 export default function Settings() {
   useEffect(() => { document.title = 'Settings | InterviewOS' }, [])
   const [tab, setTab] = useState('general')
-  const { workspace, ownWorkspace, user, signInWithGoogle } = useApp()
+  const { workspace, ownWorkspace, user, signInWithGoogle, darkMode, toggleDarkMode } = useApp()
   const { templates, loading: tLoading, add, update, remove } = useTemplates()
   const { toast } = useToast()
 
@@ -290,6 +290,19 @@ export default function Settings() {
                     {savingWs ? 'Saving…' : 'Save'}
                   </Button>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Appearance */}
+          <Card className="shadow-none">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Dark mode</p>
+                  <p className="text-xs text-muted-foreground">Switch between light and dark theme.</p>
+                </div>
+                <Switch checked={darkMode} onCheckedChange={toggleDarkMode} />
               </div>
             </CardContent>
           </Card>
