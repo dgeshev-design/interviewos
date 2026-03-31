@@ -138,17 +138,29 @@ export default function ParticipantProfile() {
       })
       if (result.error) throw new Error(result.error)
       // Convert AI plain text to EditorJS JSON blocks
-      // Lines that are short and have no sentence-ending punctuation are treated as section headers
       const rawBlocks = []
       for (const chunk of (result.summary || '').split(/\n\n+/).filter(Boolean)) {
         const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean)
-        for (const line of lines) {
-          const isHeader = line.length < 60 && !/[.!?,]$/.test(line)
-          rawBlocks.push(isHeader
-            ? { id: crypto.randomUUID(), type: 'header', data: { text: line, level: 3 } }
-            : { id: crypto.randomUUID(), type: 'paragraph', data: { text: line } }
-          )
+        // Collect consecutive bullet lines into a single list block
+        let bulletItems = []
+        const flushBullets = () => {
+          if (!bulletItems.length) return
+          rawBlocks.push({ id: crypto.randomUUID(), type: 'list', data: { style: 'unordered', items: bulletItems } })
+          bulletItems = []
         }
+        for (const line of lines) {
+          if (/^[-•]\s+/.test(line)) {
+            bulletItems.push(line.replace(/^[-•]\s+/, ''))
+          } else {
+            flushBullets()
+            const isHeader = line.length < 60 && !/[.!?,]$/.test(line)
+            rawBlocks.push(isHeader
+              ? { id: crypto.randomUUID(), type: 'header', data: { text: line, level: 3 } }
+              : { id: crypto.randomUUID(), type: 'paragraph', data: { text: line } }
+            )
+          }
+        }
+        flushBullets()
       }
       const summary = JSON.stringify({ time: Date.now(), blocks: rawBlocks, version: '2.28.0' })
       setForm(f => ({ ...f, summary }))

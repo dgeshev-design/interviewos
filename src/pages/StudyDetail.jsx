@@ -122,13 +122,26 @@ export default function StudyDetail() {
       // Convert plain text to EditorJS JSON blocks
       const rawBlocks = []
       for (const chunk of (result.synthesis || '').split(/\n\n+/).filter(Boolean)) {
-        for (const line of chunk.split('\n').map(l => l.trim()).filter(Boolean)) {
-          const isHeader = line.length < 60 && !/[.!?,]$/.test(line)
-          rawBlocks.push(isHeader
-            ? { id: crypto.randomUUID(), type: 'header', data: { text: line, level: 3 } }
-            : { id: crypto.randomUUID(), type: 'paragraph', data: { text: line } }
-          )
+        const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean)
+        let bulletItems = []
+        const flushBullets = () => {
+          if (!bulletItems.length) return
+          rawBlocks.push({ id: crypto.randomUUID(), type: 'list', data: { style: 'unordered', items: bulletItems } })
+          bulletItems = []
         }
+        for (const line of lines) {
+          if (/^[-•]\s+/.test(line)) {
+            bulletItems.push(line.replace(/^[-•]\s+/, ''))
+          } else {
+            flushBullets()
+            const isHeader = line.length < 60 && !/[.!?,]$/.test(line)
+            rawBlocks.push(isHeader
+              ? { id: crypto.randomUUID(), type: 'header', data: { text: line, level: 3 } }
+              : { id: crypto.randomUUID(), type: 'paragraph', data: { text: line } }
+            )
+          }
+        }
+        flushBullets()
       }
       const json = JSON.stringify({ time: Date.now(), blocks: rawBlocks, version: '2.28.0' })
       autoSaveSynthesis(json)

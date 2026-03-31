@@ -96,7 +96,7 @@ export default async function handler(req, res) {
 
       const messages = [{
         role: 'user',
-        content: `You are a UX research assistant. Write a structured summary of this participant interview with 2-4 named sections (e.g. "Background", "Key needs", "Pain points", "Behaviours"). Format your response as plain text only — no markdown, no asterisks, no bullet dashes. Each section: write the section title on its own line, then one or two paragraphs of text below it. Separate sections with a blank line. Be specific and evidence-based.${quotesSection}\n\nTranscript:\n${transcript.slice(0, 12000)}`,
+        content: `You are a UX research assistant. Write a structured summary of this participant interview with 2-4 named sections (e.g. "Background", "Key needs", "Pain points", "Behaviours"). Rules for formatting — follow exactly:\n- Section title: one short line, no punctuation at the end\n- Under each title: one short introductory sentence, then a bullet list using "- " prefix for each point\n- No markdown asterisks or bold syntax\n- Separate sections with a blank line\nBe specific and evidence-based.${quotesSection}\n\nTranscript:\n${transcript.slice(0, 12000)}`,
       }]
 
       const summary = await callAI(messages, ai_settings)
@@ -113,7 +113,7 @@ export default async function handler(req, res) {
 
       const messages = [{
         role: 'user',
-        content: `You are a UX research analyst. Based on the following quotes from multiple participant interviews, write a structured synthesis with 3-5 named sections (e.g. "Key themes", "Pain points", "Opportunities", "Behaviours"). Format as plain text only — no markdown, no asterisks, no bullet dashes. Each section: write the section title on its own line, then one or two paragraphs below it. Separate sections with a blank line. Be analytical and actionable.\n\nQuotes:\n${quotesList}`,
+        content: `You are a UX research analyst. Based on the following quotes from multiple participant interviews, write a structured synthesis with 3-5 named sections (e.g. "Key themes", "Pain points", "Opportunities", "Behaviours"). Rules for formatting — follow exactly:\n- Section title: one short line, no punctuation at the end\n- Under each title: one short introductory sentence, then a bullet list using "- " prefix for each point\n- No markdown asterisks or bold syntax\n- Separate sections with a blank line\nBe analytical and actionable.\n\nQuotes:\n${quotesList}`,
       }]
 
       const synthesis = await callAI(messages, ai_settings)
