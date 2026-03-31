@@ -69,7 +69,14 @@ export default function ParticipantProfile() {
   const [searchResult, setSearchResult] = useState(null) // null | { found: bool, quotes: string[] }
 
   useEffect(() => {
-    if (participant && !form) setForm({ ...participant })
+    if (!participant) return
+    if (!form) {
+      setForm({ ...participant })
+    } else if (participant.summary !== form.summary && !editing) {
+      // Re-sync summary from DB (e.g. after save completes)
+      setForm(f => ({ ...f, summary: participant.summary }))
+      setSummaryKey(k => k + 1)
+    }
   }, [participant])
 
   useEffect(() => {
