@@ -245,7 +245,7 @@ export default function StudyDetail() {
     if (stepNum <= 1) return
     setConfirmState({ title: `Remove Step ${stepNum}?`, description: 'Its fields will be moved to Step 1.', onConfirm: async () => {
       const fields = (form.fields || []).map(f => f.step === stepNum ? { ...f, step: 1 } : f)
-      const titles = (form.step_titles || []).slice(0, stepNum - 1)
+      const titles = (form.step_titles || []).slice(0, stepNum - 2)
       setActiveStep(Math.min(activeStep, stepNum - 1))
       await saveForm({ fields, step_titles: titles })
     }})
@@ -593,7 +593,7 @@ export default function StudyDetail() {
             {/* ── Left sidebar ──────────────────────────────────────────── */}
             <div className="w-[400px] shrink-0 sticky top-8 space-y-3">
               <Tabs value={formTab} onValueChange={setFormTab}>
-                <TabsList className="w-full">
+                <TabsList className="w-full mb-2.5">
                   <TabsTrigger value="branding" className="flex-1">Branding</TabsTrigger>
                   <TabsTrigger value="booking" className="flex-1">Booking</TabsTrigger>
                   <TabsTrigger value="fields" className="flex-1">Fields</TabsTrigger>
