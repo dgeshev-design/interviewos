@@ -639,8 +639,8 @@ export default function Settings() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Switch
-                          checked={t.enabled !== false}
-                          onCheckedChange={v => update(t.id, { enabled: v })}
+                          checked={t.is_active !== false}
+                          onCheckedChange={v => update(t.id, { is_active: v })}
                         />
                         <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => openTestSend(t)}>
                           <Send className="h-3 w-3" /> Test
