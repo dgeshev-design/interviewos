@@ -31,6 +31,23 @@ export default function StudyReport() {
 
   const statusColor = { booked: '#6366f1', completed: '#10b981', cancelled: '#ef4444', 'no-show': '#f59e0b', screened: '#8b5cf6' }
 
+  const renderEditorContent = (value) => {
+    if (!value) return null
+    try {
+      const doc = typeof value === 'string' ? JSON.parse(value) : value
+      if (!doc?.blocks) throw new Error()
+      return (doc.blocks || []).map((block, i) => {
+        const text = block.data?.text || ''
+        if (block.type === 'header') return <div key={i} style={{ fontWeight: 600, fontSize: block.data?.level <= 2 ? 16 : 14, marginTop: 12, marginBottom: 4 }} dangerouslySetInnerHTML={{ __html: text }} />
+        if (block.type === 'list') return <ul key={i} style={{ paddingLeft: 20, marginBottom: 8 }}>{(block.data?.items || []).map((item, j) => <li key={j} dangerouslySetInnerHTML={{ __html: item }} />)}</ul>
+        if (block.type === 'delimiter') return <hr key={i} style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+        return text ? <p key={i} style={{ marginBottom: 6 }} dangerouslySetInnerHTML={{ __html: text }} /> : null
+      })
+    } catch {
+      return <span style={{ whiteSpace: 'pre-wrap', fontSize: 13.5 }}>{value}</span>
+    }
+  }
+
   if (loading) return <div style={s.page}><div style={{...s.wrap, color:'#9ca3af',fontSize:14}}>Loading report…</div></div>
   if (error)   return <div style={s.page}><div style={s.wrap}><div style={s.err}>{error}</div></div></div>
 
@@ -56,20 +73,7 @@ export default function StudyReport() {
           <div style={s.card}>
             <span style={s.label}>Study summary</span>
             <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.7 }}>
-              {(() => {
-                try {
-                  const doc = typeof study.synthesis === 'string' ? JSON.parse(study.synthesis) : study.synthesis
-                  return (doc.blocks || []).map((block, i) => {
-                    const text = block.data?.text || ''
-                    if (block.type === 'header') return <div key={i} style={{ fontWeight: 600, fontSize: block.data?.level <= 2 ? 16 : 14, marginBottom: 4 }} dangerouslySetInnerHTML={{ __html: text }} />
-                    if (block.type === 'list') return <ul key={i} style={{ paddingLeft: 20, marginBottom: 8 }}>{(block.data?.items || []).map((item, j) => <li key={j} dangerouslySetInnerHTML={{ __html: item }} />)}</ul>
-                    if (block.type === 'delimiter') return <hr key={i} style={{ margin: '12px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
-                    return text ? <p key={i} style={{ marginBottom: 6 }} dangerouslySetInnerHTML={{ __html: text }} /> : null
-                  })
-                } catch {
-                  return <span style={{ whiteSpace: 'pre-wrap' }}>{study.synthesis}</span>
-                }
-              })()}
+              {renderEditorContent(study.synthesis)}
             </div>
           </div>
         )}
@@ -113,7 +117,7 @@ export default function StudyReport() {
                 <>
                   <hr style={s.divider} />
                   <span style={s.label}>Summary</span>
-                  <div style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{p.summary}</div>
+                  <div style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.6 }}>{renderEditorContent(p.summary)}</div>
                 </>
               )}
 
