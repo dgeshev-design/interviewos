@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import TemplateModal from '@/components/comms/TemplateModal'
-import { TRIGGER_LABELS, applyTemplateVars } from '@/lib/utils'
+import { TRIGGER_LABELS, applyTemplateVars, cn } from '@/lib/utils'
 import { normalizeToE164 } from '@/lib/phoneCodes'
 import PageHeader from '@/components/layout/PageHeader'
 import { useToast } from '@/hooks/use-toast'
