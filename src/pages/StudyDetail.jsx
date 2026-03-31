@@ -235,7 +235,7 @@ export default function StudyDetail() {
   const stepTitles = form?.step_titles || []
 
   const addStep = async () => {
-    if (stepCount >= 3) return
+    if (stepCount >= 6) return
     const next = stepCount + 1
     setActiveStep(next)
     await saveForm({ step_titles: [...stepTitles, ''] })
@@ -756,7 +756,7 @@ export default function StudyDetail() {
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-semibold">Form fields</span>
                       <div className="flex items-center gap-2">
-                        {stepCount < 3 && (
+                        {stepCount < 6 && (
                           <Button variant="outline" size="sm" onClick={addStep}>
                             <Plus className="h-3.5 w-3.5 mr-1" /> Add step
                           </Button>
