@@ -96,6 +96,7 @@ export default function NotionEditor({
         ...style,
       }}
     >
+      <style>{`.codex-editor__redactor { padding-bottom: 16px !important; }`}</style>
       <div
         ref={holderRef}
         style={{

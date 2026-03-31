@@ -96,7 +96,7 @@ export default async function handler(req, res) {
 
       const messages = [{
         role: 'user',
-        content: `You are a UX research assistant. Write a concise 2-4 paragraph summary of this participant interview. Focus on their key needs, pain points, behaviours and attitudes. Be specific and evidence-based.${quotesSection}\n\nTranscript:\n${transcript.slice(0, 12000)}`,
+        content: `You are a UX research assistant. Write a structured summary of this participant interview with 2-4 named sections (e.g. "Background", "Key needs", "Pain points", "Behaviours"). Format your response as plain text only — no markdown, no asterisks, no bullet dashes. Each section: write the section title on its own line, then one or two paragraphs of text below it. Separate sections with a blank line. Be specific and evidence-based.${quotesSection}\n\nTranscript:\n${transcript.slice(0, 12000)}`,
       }]
 
       const summary = await callAI(messages, ai_settings)

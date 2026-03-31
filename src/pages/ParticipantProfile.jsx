@@ -137,13 +137,20 @@ export default function ParticipantProfile() {
         ai_settings: aiSettings,
       })
       if (result.error) throw new Error(result.error)
-      // Convert plain text paragraphs to EditorJS JSON
-      const blocks = (result.summary || '').split(/\n\n+/).filter(Boolean).map(para => ({
-        id: crypto.randomUUID(),
-        type: 'paragraph',
-        data: { text: para.replace(/\n/g, '<br>') },
-      }))
-      const summary = JSON.stringify({ time: Date.now(), blocks, version: '2.28.0' })
+      // Convert AI plain text to EditorJS JSON blocks
+      // Lines that are short and have no sentence-ending punctuation are treated as section headers
+      const rawBlocks = []
+      for (const chunk of (result.summary || '').split(/\n\n+/).filter(Boolean)) {
+        const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean)
+        for (const line of lines) {
+          const isHeader = line.length < 60 && !/[.!?,]$/.test(line)
+          rawBlocks.push(isHeader
+            ? { id: crypto.randomUUID(), type: 'header', data: { text: line, level: 3 } }
+            : { id: crypto.randomUUID(), type: 'paragraph', data: { text: line } }
+          )
+        }
+      }
+      const summary = JSON.stringify({ time: Date.now(), blocks: rawBlocks, version: '2.28.0' })
       setForm(f => ({ ...f, summary }))
       autoSave({ summary })
       setSummaryKey(k => k + 1)
