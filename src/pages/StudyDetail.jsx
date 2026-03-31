@@ -16,7 +16,7 @@ import { Progress } from '@/components/ui/progress'
 import StatusBadge from '@/components/ui/status-badge'
 import PageHeader from '@/components/layout/PageHeader'
 import { formatDateTime, cn } from '@/lib/utils'
-import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2, Sparkles, Quote } from 'lucide-react'
+import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2, Sparkles, Quote, Monitor, Smartphone, RotateCcw } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 import NotionEditor from '@/components/ui/notion-editor'
@@ -172,6 +172,9 @@ export default function StudyDetail() {
   const bannerRef = useRef()
   const logoRef   = useRef()
   const [bookingConfig, setBookingConfig] = useState(form?.booking_config || {})
+  const [formTab, setFormTab]       = useState('branding')
+  const [previewMode, setPreviewMode] = useState('desktop')
+  const [iframeKey, setIframeKey]   = useState(0)
 
   // ── Load / create form ───────────────────────────────────────────────────
   const loadForm = useCallback(async () => {
@@ -585,304 +588,337 @@ export default function StudyDetail() {
         <TabsContent value="form">{(
         formLoading ? <p className="text-sm text-muted-foreground">Loading form…</p> :
         form ? (
-          <div className="space-y-5">
+          <div className="flex gap-6 items-start">
 
-            {/* Branding ─────────────────────────────────────────────────── */}
-            <Card className="shadow-none">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Branding</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-5">
+            {/* ── Left sidebar ──────────────────────────────────────────── */}
+            <div className="w-[320px] shrink-0 sticky top-8 max-h-[calc(100vh-160px)] overflow-y-auto pb-8">
+              <Tabs value={formTab} onValueChange={setFormTab}>
+                <TabsList className="w-full mb-4">
+                  <TabsTrigger value="branding" className="flex-1">Branding</TabsTrigger>
+                  <TabsTrigger value="booking" className="flex-1">Booking</TabsTrigger>
+                  <TabsTrigger value="fields" className="flex-1">Fields</TabsTrigger>
+                </TabsList>
 
-                {/* Banner */}
-                <div className="space-y-2">
-                  <Label>Banner image</Label>
-                  {form.banner_url && (
-                    <div className="relative rounded-lg overflow-hidden border bg-muted h-32 mb-2">
-                      <img src={form.banner_url} alt="Banner" className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => saveForm({ banner_url: null })}
-                        className="absolute top-2 right-2 bg-white/90 hover:bg-white border rounded px-2 py-1 text-xs shadow-sm">
-                        Remove
-                      </button>
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Paste image URL…"
-                      value={form.banner_url || ''}
-                      onChange={e => setForm(f => ({ ...f, banner_url: e.target.value }))}
-                      className="flex-1"
-                    />
-                    <Button variant="outline" size="sm" onClick={() => bannerRef.current?.click()} disabled={uploadingBanner}>
-                      <Upload className="h-3.5 w-3.5 mr-1.5" />
-                      {uploadingBanner ? 'Uploading…' : 'Upload'}
-                    </Button>
-                    <Button size="sm" onClick={() => saveForm({ banner_url: form.banner_url })} disabled={savingForm}>
-                      Save
-                    </Button>
-                  </div>
-                  <input ref={bannerRef} type="file" accept="image/*" className="hidden"
-                    onChange={e => { if (e.target.files[0]) uploadImage(e.target.files[0], 'banner_url') }} />
-                </div>
-
-                {/* Logo */}
-                <div className="space-y-2">
-                  <Label>Logo image</Label>
-                  {form.logo_url && (
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-14 w-14 rounded-lg border bg-muted flex items-center justify-center overflow-hidden">
-                        <img src={form.logo_url} alt="Logo" className="h-full w-full object-contain p-1" />
-                      </div>
-                      <button onClick={() => saveForm({ logo_url: null })} className="text-xs text-muted-foreground hover:text-destructive">
-                        Remove
-                      </button>
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Paste logo URL…"
-                      value={form.logo_url || ''}
-                      onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))}
-                      className="flex-1"
-                    />
-                    <Button variant="outline" size="sm" onClick={() => logoRef.current?.click()} disabled={uploadingLogo}>
-                      <Upload className="h-3.5 w-3.5 mr-1.5" />
-                      {uploadingLogo ? 'Uploading…' : 'Upload'}
-                    </Button>
-                    <Button size="sm" onClick={() => saveForm({ logo_url: form.logo_url })} disabled={savingForm}>
-                      Save
-                    </Button>
-                  </div>
-                  <input ref={logoRef} type="file" accept="image/*" className="hidden"
-                    onChange={e => { if (e.target.files[0]) uploadImage(e.target.files[0], 'logo_url') }} />
-                </div>
-
-                {/* Brand color */}
-                <div className="space-y-2">
-                  <Label>Brand color</Label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="color"
-                      value={form.primary_color || '#6366f1'}
-                      onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))}
-                      className="h-9 w-16 rounded border cursor-pointer p-0.5"
-                    />
-                    <Input
-                      value={form.primary_color || '#6366f1'}
-                      onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))}
-                      className="w-28 font-mono text-sm"
-                      maxLength={7}
-                    />
-                    <Button size="sm" onClick={() => saveForm({ primary_color: form.primary_color })} disabled={savingForm}>
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Booking settings */}
-            <Card className="shadow-none">
-              <CardContent className="p-6 space-y-5">
-                <div>
-                  <h3 className="font-semibold text-sm mb-0.5">Booking</h3>
-                  <p className="text-xs text-muted-foreground">Control how far ahead participants can book and which hours are shown.</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">How far ahead can participants book?</Label>
-                  <div className="flex gap-2 items-center">
-                    <Select
-                      value={bookingConfig.visibility || 'days'}
-                      onValueChange={v => {
-                        const cfg = { ...bookingConfig, visibility: v }
-                        setBookingConfig(cfg)
-                      }}
-                    >
-                      <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="days">Next N days</SelectItem>
-                        <SelectItem value="today">Today only</SelectItem>
-                        <SelectItem value="tomorrow">Today + tomorrow</SelectItem>
-                        <SelectItem value="range">Custom date range</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {(!bookingConfig.visibility || bookingConfig.visibility === 'days') && (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="1" max="365"
-                          className="w-20 h-9 text-sm"
-                          value={bookingConfig.days_ahead || 30}
-                          onChange={e => setBookingConfig(c => ({ ...c, days_ahead: parseInt(e.target.value) || 30 }))}
-                        />
-                        <span className="text-sm text-muted-foreground">days</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {bookingConfig.visibility === 'range' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">From date</Label>
-                      <Input type="date" value={bookingConfig.date_from || ''} onChange={e => setBookingConfig(c => ({ ...c, date_from: e.target.value }))} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">To date</Label>
-                      <Input type="date" value={bookingConfig.date_to || ''} onChange={e => setBookingConfig(c => ({ ...c, date_to: e.target.value }))} />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Hour visibility override <span className="text-muted-foreground font-normal">(optional — leave blank to use availability rule hours)</span></Label>
-                  <div className="flex items-center gap-2">
-                    <Input type="time" className="w-32 h-9 text-sm" value={bookingConfig.hour_from || ''} placeholder="09:00"
-                      onChange={e => setBookingConfig(c => ({ ...c, hour_from: e.target.value }))} />
-                    <span className="text-sm text-muted-foreground">to</span>
-                    <Input type="time" className="w-32 h-9 text-sm" value={bookingConfig.hour_to || ''} placeholder="17:00"
-                      onChange={e => setBookingConfig(c => ({ ...c, hour_to: e.target.value }))} />
-                  </div>
-                </div>
-
-                {/* Step counter toggle */}
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      className="rounded"
-                      checked={bookingConfig.show_step_counter !== false}
-                      onChange={e => setBookingConfig(c => ({ ...c, show_step_counter: e.target.checked }))}
-                    />
-                    <span className="text-xs text-muted-foreground">Show step progress bar to participants</span>
-                  </label>
-                </div>
-
-                <Button size="sm" onClick={() => saveBookingConfig(bookingConfig)}>Save booking settings</Button>
-              </CardContent>
-            </Card>
-
-            {/* Fields ───────────────────────────────────────────────────── */}
-            <Card className="shadow-none">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">Form fields</CardTitle>
-                  <div className="flex items-center gap-2">
-                    {stepCount < 3 && (
-                      <Button variant="outline" size="sm" onClick={addStep}>
-                        <Plus className="h-3.5 w-3.5 mr-1" /> Add step
-                      </Button>
-                    )}
-                    <Button size="sm" onClick={openNewField}>
-                      <Plus className="h-4 w-4 mr-1.5" /> Add field
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Step tabs — always visible so you can add steps before adding fields */}
-                <div className="flex items-center gap-1 mt-3 flex-wrap">
-                  {Array.from({ length: stepCount }, (_, i) => i + 1).map(s => (
-                    <div key={s} className="flex items-center gap-1">
-                      <button
-                        onClick={() => setActiveStep(s)}
-                        className={cn(
-                          'px-3 py-1 rounded-md text-xs font-medium transition-colors',
-                          activeStep === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                {/* Branding */}
+                <TabsContent value="branding" className="mt-0">
+                  <Card className="shadow-none">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Branding</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                      {/* Banner */}
+                      <div className="space-y-2">
+                        <Label>Banner image</Label>
+                        {form.banner_url && (
+                          <div className="relative rounded-lg overflow-hidden border bg-muted h-32 mb-2">
+                            <img src={form.banner_url} alt="Banner" className="w-full h-full object-cover" />
+                            <button
+                              onClick={() => saveForm({ banner_url: null })}
+                              className="absolute top-2 right-2 bg-white/90 hover:bg-white border rounded px-2 py-1 text-xs shadow-sm">
+                              Remove
+                            </button>
+                          </div>
                         )}
-                      >
-                        {s === 1 ? (form.step_titles?.[0] || 'Step 1') : (form.step_titles?.[s - 1] || `Step ${s}`)}
-                      </button>
-                      {s > 1 && activeStep === s && (
-                        <button onClick={() => removeStep(s)} className="text-muted-foreground hover:text-destructive">
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Paste image URL…"
+                            value={form.banner_url || ''}
+                            onChange={e => setForm(f => ({ ...f, banner_url: e.target.value }))}
+                            className="flex-1"
+                          />
+                          <Button variant="outline" size="sm" onClick={() => bannerRef.current?.click()} disabled={uploadingBanner}>
+                            <Upload className="h-3.5 w-3.5 mr-1.5" />
+                            {uploadingBanner ? 'Uploading…' : 'Upload'}
+                          </Button>
+                          <Button size="sm" onClick={() => saveForm({ banner_url: form.banner_url })} disabled={savingForm}>Save</Button>
+                        </div>
+                        <input ref={bannerRef} type="file" accept="image/*" className="hidden"
+                          onChange={e => { if (e.target.files[0]) uploadImage(e.target.files[0], 'banner_url') }} />
+                      </div>
+                      {/* Logo */}
+                      <div className="space-y-2">
+                        <Label>Logo image</Label>
+                        {form.logo_url && (
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="h-14 w-14 rounded-lg border bg-muted flex items-center justify-center overflow-hidden">
+                              <img src={form.logo_url} alt="Logo" className="h-full w-full object-contain p-1" />
+                            </div>
+                            <button onClick={() => saveForm({ logo_url: null })} className="text-xs text-muted-foreground hover:text-destructive">Remove</button>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Paste logo URL…"
+                            value={form.logo_url || ''}
+                            onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))}
+                            className="flex-1"
+                          />
+                          <Button variant="outline" size="sm" onClick={() => logoRef.current?.click()} disabled={uploadingLogo}>
+                            <Upload className="h-3.5 w-3.5 mr-1.5" />
+                            {uploadingLogo ? 'Uploading…' : 'Upload'}
+                          </Button>
+                          <Button size="sm" onClick={() => saveForm({ logo_url: form.logo_url })} disabled={savingForm}>Save</Button>
+                        </div>
+                        <input ref={logoRef} type="file" accept="image/*" className="hidden"
+                          onChange={e => { if (e.target.files[0]) uploadImage(e.target.files[0], 'logo_url') }} />
+                      </div>
+                      {/* Brand color */}
+                      <div className="space-y-2">
+                        <Label>Brand color</Label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="color"
+                            value={form.primary_color || '#6366f1'}
+                            onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))}
+                            className="h-9 w-16 rounded border cursor-pointer p-0.5"
+                          />
+                          <Input
+                            value={form.primary_color || '#6366f1'}
+                            onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))}
+                            className="w-28 font-mono text-sm"
+                            maxLength={7}
+                          />
+                          <Button size="sm" onClick={() => saveForm({ primary_color: form.primary_color })} disabled={savingForm}>Save</Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
-                {/* Step title editor */}
-                <input
-                  className="mt-2 w-full text-xs border rounded px-2 py-1 text-muted-foreground focus:outline-none focus:border-primary"
-                  placeholder={`Step ${activeStep} title (optional)`}
-                  value={form.step_titles?.[activeStep - 1] || ''}
-                  onChange={e => {
-                    const titles = [...(form.step_titles || Array(stepCount).fill(''))]
-                    titles[activeStep - 1] = e.target.value
-                    setForm(f => ({ ...f, step_titles: titles }))
-                  }}
-                  onBlur={e => {
-                    const titles = [...(form.step_titles || Array(stepCount).fill(''))]
-                    titles[activeStep - 1] = e.target.value
-                    saveForm({ step_titles: titles })
-                  }}
-                />
-              </CardHeader>
-              <CardContent>
-                {(() => {
-                  const stepFields = (form.fields || []).filter(f => (f.step || 1) === activeStep)
-                  if (stepFields.length === 0) return (
-                    <div className="text-center py-8">
-                      <p className="text-sm text-muted-foreground mb-3">No fields in this step yet.</p>
-                      <Button size="sm" onClick={openNewField}>
-                        <Plus className="h-4 w-4 mr-1.5" /> Add field
-                      </Button>
-                    </div>
-                  )
-                  return (
-                    <div className="space-y-2">
-                      {stepFields.map((f, idx) => (
-                        <div key={f.id} className="flex items-center gap-2 p-3 rounded-md border hover:bg-muted/20 transition-colors">
-                          <div className="flex flex-col gap-0.5 shrink-0">
-                            <button onClick={() => moveField(f.id, -1)} disabled={idx === 0}
-                              className="text-muted-foreground hover:text-foreground disabled:opacity-25">
-                              <ChevronUp className="h-3.5 w-3.5" />
-                            </button>
-                            <button onClick={() => moveField(f.id, 1)} disabled={idx === stepFields.length - 1}
-                              className="text-muted-foreground hover:text-foreground disabled:opacity-25">
-                              <ChevronDown className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium truncate">{f.label}</span>
-                              {f.system && <Badge className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-600 border-blue-200">System</Badge>}
-                              {f.required && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Required</Badge>}
-                              {f.is_screener && <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">Screener</Badge>}
-                              {f.condition_field && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Conditional</Badge>}
+                {/* Booking */}
+                <TabsContent value="booking" className="mt-0">
+                  <Card className="shadow-none">
+                    <CardContent className="p-6 space-y-5">
+                      <div>
+                        <h3 className="font-semibold text-sm mb-0.5">Booking</h3>
+                        <p className="text-xs text-muted-foreground">Control how far ahead participants can book and which hours are shown.</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">How far ahead can participants book?</Label>
+                        <div className="flex gap-2 items-center">
+                          <Select
+                            value={bookingConfig.visibility || 'days'}
+                            onValueChange={v => setBookingConfig(c => ({ ...c, visibility: v }))}
+                          >
+                            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="days">Next N days</SelectItem>
+                              <SelectItem value="today">Today only</SelectItem>
+                              <SelectItem value="tomorrow">Today + tomorrow</SelectItem>
+                              <SelectItem value="range">Custom date range</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {(!bookingConfig.visibility || bookingConfig.visibility === 'days') && (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number" min="1" max="365"
+                                className="w-20 h-9 text-sm"
+                                value={bookingConfig.days_ahead || 30}
+                                onChange={e => setBookingConfig(c => ({ ...c, days_ahead: parseInt(e.target.value) || 30 }))}
+                              />
+                              <span className="text-sm text-muted-foreground">days</span>
                             </div>
-                            <div className="text-xs text-muted-foreground mt-0.5">
-                              {FIELD_TYPES.find(t => t.value === f.type)?.label || f.type}
-                              {f.options?.length > 0 && ` · ${f.options.length} option${f.options.length !== 1 ? 's' : ''}`}
-                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {bookingConfig.visibility === 'range' && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">From date</Label>
+                            <Input type="date" value={bookingConfig.date_from || ''} onChange={e => setBookingConfig(c => ({ ...c, date_from: e.target.value }))} />
                           </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditField(f)}>
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </Button>
-                            {!f.system && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive"
-                                onClick={() => setConfirmState({ title: 'Delete this field?', onConfirm: () => deleteField(f.id) })}>
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">To date</Label>
+                            <Input type="date" value={bookingConfig.date_to || ''} onChange={e => setBookingConfig(c => ({ ...c, date_to: e.target.value }))} />
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )
-                })()}
-              </CardContent>
-            </Card>
+                      )}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Hour visibility override <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                        <div className="flex items-center gap-2">
+                          <Input type="time" className="w-32 h-9 text-sm" value={bookingConfig.hour_from || ''} placeholder="09:00"
+                            onChange={e => setBookingConfig(c => ({ ...c, hour_from: e.target.value }))} />
+                          <span className="text-sm text-muted-foreground">to</span>
+                          <Input type="time" className="w-32 h-9 text-sm" value={bookingConfig.hour_to || ''} placeholder="17:00"
+                            onChange={e => setBookingConfig(c => ({ ...c, hour_to: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox" className="rounded"
+                            checked={bookingConfig.show_step_counter !== false}
+                            onChange={e => setBookingConfig(c => ({ ...c, show_step_counter: e.target.checked }))}
+                          />
+                          <span className="text-xs text-muted-foreground">Show step progress bar to participants</span>
+                        </label>
+                      </div>
+                      <Button size="sm" onClick={() => saveBookingConfig(bookingConfig)}>Save booking settings</Button>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
-            {/* Preview link */}
-            <div className="flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => window.open(publicUrl, '_blank')}>
-                <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Preview public form
-              </Button>
+                {/* Fields */}
+                <TabsContent value="fields" className="mt-0">
+                  <Card className="shadow-none">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm">Form fields</CardTitle>
+                        <div className="flex items-center gap-2">
+                          {stepCount < 3 && (
+                            <Button variant="outline" size="sm" onClick={addStep}>
+                              <Plus className="h-3.5 w-3.5 mr-1" /> Add step
+                            </Button>
+                          )}
+                          <Button size="sm" onClick={openNewField}>
+                            <Plus className="h-4 w-4 mr-1.5" /> Add field
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 mt-3 flex-wrap">
+                        {Array.from({ length: stepCount }, (_, i) => i + 1).map(s => (
+                          <div key={s} className="flex items-center gap-1">
+                            <button
+                              onClick={() => setActiveStep(s)}
+                              className={cn(
+                                'px-3 py-1 rounded-md text-xs font-medium transition-colors',
+                                activeStep === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                              )}
+                            >
+                              {s === 1 ? (form.step_titles?.[0] || 'Step 1') : (form.step_titles?.[s - 1] || `Step ${s}`)}
+                            </button>
+                            {s > 1 && activeStep === s && (
+                              <button onClick={() => removeStep(s)} className="text-muted-foreground hover:text-destructive">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <input
+                        className="mt-2 w-full text-xs border rounded px-2 py-1 text-muted-foreground focus:outline-none focus:border-primary"
+                        placeholder={`Step ${activeStep} title (optional)`}
+                        value={form.step_titles?.[activeStep - 1] || ''}
+                        onChange={e => {
+                          const titles = [...(form.step_titles || Array(stepCount).fill(''))]
+                          titles[activeStep - 1] = e.target.value
+                          setForm(f => ({ ...f, step_titles: titles }))
+                        }}
+                        onBlur={e => {
+                          const titles = [...(form.step_titles || Array(stepCount).fill(''))]
+                          titles[activeStep - 1] = e.target.value
+                          saveForm({ step_titles: titles })
+                        }}
+                      />
+                    </CardHeader>
+                    <CardContent>
+                      {(() => {
+                        const stepFields = (form.fields || []).filter(f => (f.step || 1) === activeStep)
+                        if (stepFields.length === 0) return (
+                          <div className="text-center py-8">
+                            <p className="text-sm text-muted-foreground mb-3">No fields in this step yet.</p>
+                            <Button size="sm" onClick={openNewField}><Plus className="h-4 w-4 mr-1.5" /> Add field</Button>
+                          </div>
+                        )
+                        return (
+                          <div className="space-y-2">
+                            {stepFields.map((f, idx) => (
+                              <div key={f.id} className="flex items-center gap-2 p-3 rounded-md border hover:bg-muted/20 transition-colors">
+                                <div className="flex flex-col gap-0.5 shrink-0">
+                                  <button onClick={() => moveField(f.id, -1)} disabled={idx === 0}
+                                    className="text-muted-foreground hover:text-foreground disabled:opacity-25">
+                                    <ChevronUp className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button onClick={() => moveField(f.id, 1)} disabled={idx === stepFields.length - 1}
+                                    className="text-muted-foreground hover:text-foreground disabled:opacity-25">
+                                    <ChevronDown className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-medium truncate">{f.label}</span>
+                                    {f.system && <Badge className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-600 border-blue-200">System</Badge>}
+                                    {f.required && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Required</Badge>}
+                                    {f.is_screener && <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">Screener</Badge>}
+                                    {f.condition_field && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Conditional</Badge>}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-0.5">
+                                    {FIELD_TYPES.find(t => t.value === f.type)?.label || f.type}
+                                    {f.options?.length > 0 && ` · ${f.options.length} option${f.options.length !== 1 ? 's' : ''}`}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditField(f)}>
+                                    <Edit2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                  {!f.system && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive"
+                                      onClick={() => setConfirmState({ title: 'Delete this field?', onConfirm: () => deleteField(f.id) })}>
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })()}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
+
+            {/* ── Right preview panel ───────────────────────────────────── */}
+            <div className="flex-1 min-w-0 sticky top-8">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-muted-foreground">Preview</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex rounded-md border overflow-hidden">
+                    <button
+                      onClick={() => setPreviewMode('desktop')}
+                      className={cn('px-2.5 py-1.5 transition-colors', previewMode === 'desktop' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                      title="Desktop"
+                    >
+                      <Monitor className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setPreviewMode('mobile')}
+                      className={cn('px-2.5 py-1.5 transition-colors', previewMode === 'mobile' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                      title="Mobile"
+                    >
+                      <Smartphone className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Refresh preview" onClick={() => setIframeKey(k => k + 1)}>
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => window.open(publicUrl, '_blank')}>
+                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Open
+                  </Button>
+                </div>
+              </div>
+              <div className={cn('transition-all duration-200', previewMode === 'mobile' ? 'flex justify-center' : '')}>
+                <div className={cn(
+                  'rounded-xl border overflow-hidden shadow-sm',
+                  previewMode === 'mobile' ? 'w-[390px]' : 'w-full'
+                )}>
+                  {previewMode === 'mobile' && (
+                    <div className="h-6 bg-muted border-b flex items-center justify-center">
+                      <div className="w-16 h-1.5 rounded-full bg-border" />
+                    </div>
+                  )}
+                  <iframe
+                    key={iframeKey}
+                    src={publicUrl}
+                    className="w-full border-0 block"
+                    style={{ height: 'calc(100vh - 200px)' }}
+                    title="Form preview"
+                  />
+                </div>
+              </div>
+            </div>
+
           </div>
         ) : <p className="text-sm text-muted-foreground">Failed to load form.</p>
       )}
