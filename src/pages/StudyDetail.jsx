@@ -175,6 +175,16 @@ export default function StudyDetail() {
   const [formTab, setFormTab]       = useState('branding')
   const [previewMode, setPreviewMode] = useState('desktop')
   const [iframeKey, setIframeKey]   = useState(0)
+  const previewIframeRef = useRef()
+
+  // Send step to preview iframe via postMessage (no reload needed)
+  const sendPreviewStep = useCallback((step) => {
+    previewIframeRef.current?.contentWindow?.postMessage({ type: 'previewStep', step }, '*')
+  }, [])
+
+  useEffect(() => {
+    if (formTab === 'fields') sendPreviewStep(activeStep)
+  }, [activeStep, formTab])
 
   // ── Load / create form ───────────────────────────────────────────────────
   const loadForm = useCallback(async () => {
@@ -899,8 +909,10 @@ export default function StudyDetail() {
                     </div>
                   )}
                   <iframe
-                    key={`${iframeKey}-${formTab === 'fields' ? activeStep : 0}`}
-                    src={formTab === 'fields' && activeStep > 1 ? `${publicUrl}?previewStep=${activeStep}` : publicUrl}
+                    key={iframeKey}
+                    ref={previewIframeRef}
+                    src={publicUrl}
+                    onLoad={() => { if (formTab === 'fields') sendPreviewStep(activeStep) }}
                     className="w-full border-0 block"
                     style={{ height: 'calc(100vh - 200px)' }}
                     title="Form preview"

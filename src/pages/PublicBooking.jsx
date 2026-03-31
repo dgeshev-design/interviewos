@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { format, parseISO, startOfWeek, addDays, isSameDay, isToday } from 'date-fns'
 import { submitPublicForm } from '@/lib/api'
 import { PHONE_BY_ISO, isPhoneValid } from '@/lib/phoneCodes'
@@ -7,11 +7,9 @@ import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 
 export default function PublicBooking() {
   const { studySlug } = useParams()
-  const [searchParams] = useSearchParams()
-  const initialFormStep = Math.max(1, parseInt(searchParams.get('previewStep') || '1', 10))
   const [data, setData]         = useState(null)
   const [step, setStep]         = useState('form') // form | book | done | disqualified
-  const [formStep, setFormStep] = useState(initialFormStep)
+  const [formStep, setFormStep] = useState(1)
   const [answers, setAnswers]   = useState({})
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [calendarDate, setCalendarDate] = useState(null)
@@ -21,6 +19,16 @@ export default function PublicBooking() {
   const [error, setError]       = useState('')
 
   useEffect(() => { document.title = 'Book a Session | InterviewOS' }, [])
+
+  // Listen for step navigation from the form builder preview (only active when inside an iframe)
+  useEffect(() => {
+    if (window.self === window.top) return // not in iframe — ignore
+    const handler = (e) => {
+      if (e.data?.type === 'previewStep') setFormStep(Math.max(1, e.data.step))
+    }
+    window.addEventListener('message', handler)
+    return () => window.removeEventListener('message', handler)
+  }, [])
 
   useEffect(() => {
     if (step === 'book' && !calendarDate) {
