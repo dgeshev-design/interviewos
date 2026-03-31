@@ -211,9 +211,9 @@ export default function Settings() {
       const body = applyTemplateVars(testTemplate.body, testParticipant, null)
       const subject = applyTemplateVars(testTemplate.subject || '', testParticipant, null)
       let result
-      if      (testTemplate.channel === 'email')    result = await sendEmail({ to: testParticipant.email, subject, body, isHtml: testTemplate.is_html, workspace_id: workspace.id })
-      else if (testTemplate.channel === 'whatsapp') result = await sendWhatsApp({ to: phone, body, workspace_id: workspace.id })
-      else if (testTemplate.channel === 'sms')      result = await sendSMS({ to: phone, body, workspace_id: workspace.id })
+      if      (testTemplate.channel === 'email')    result = await sendEmail({ to: testParticipant.email, subject, body, isHtml: testTemplate.is_html, workspace_id: workspace.id, comms_settings: intgForm })
+      else if (testTemplate.channel === 'whatsapp') result = await sendWhatsApp({ to: phone, body, workspace_id: workspace.id, comms_settings: intgForm })
+      else if (testTemplate.channel === 'sms')      result = await sendSMS({ to: phone, body, workspace_id: workspace.id, comms_settings: intgForm })
       if (result?.error) throw new Error(result.error)
       toast({ title: 'Test sent', description: `${testTemplate.channel} sent to ${testParticipant.name}`, variant: 'success' })
       setTestTemplate(null)

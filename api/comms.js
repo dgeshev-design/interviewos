@@ -56,8 +56,8 @@ async function sendViaSendGrid(to, subject, body, isHtml, apiKey, fromEmail, fro
 
 async function sendEmail(to, subject, body, isHtml, settings) {
   const provider  = settings?.email_provider || 'resend'
-  const apiKey    = settings?.email_api_key    || process.env.RESEND_API_KEY
-  const fromEmail = settings?.email_from       || process.env.RESEND_FROM_EMAIL
+  const apiKey    = settings?.email_api_key
+  const fromEmail = settings?.email_from
   const fromName  = settings?.email_from_name  || ''
 
   if (!apiKey)    throw new Error('No email API key configured. Add one in Settings → Integrations.')
@@ -70,8 +70,8 @@ async function sendEmail(to, subject, body, isHtml, settings) {
 // ── Twilio (SMS + WhatsApp) ───────────────────────────────────────────────────
 
 async function sendTwilio(to, body, from, settings) {
-  const sid   = settings?.twilio_account_sid   || process.env.TWILIO_ACCOUNT_SID
-  const token = settings?.twilio_auth_token    || process.env.TWILIO_AUTH_TOKEN
+  const sid   = settings?.twilio_account_sid
+  const token = settings?.twilio_auth_token
 
   if (!sid || !token) throw new Error('Twilio credentials not configured. Add them in Settings → Integrations.')
 
@@ -92,10 +92,11 @@ async function sendTwilio(to, body, from, settings) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-  const { action, to, subject, body, isHtml, workspace_id } = req.body
+  const { action, to, subject, body, isHtml, workspace_id, comms_settings } = req.body
   if (!to || !body) return res.status(400).json({ error: 'Missing to or body' })
 
-  const settings = await getSettings(workspace_id)
+  // Use settings passed from frontend if available; fall back to DB lookup
+  const settings = comms_settings || await getSettings(workspace_id)
 
   try {
     if (action === 'email') {
@@ -103,14 +104,14 @@ export default async function handler(req, res) {
     }
 
     if (action === 'sms') {
-      const from = settings?.twilio_phone_number || process.env.TWILIO_PHONE_NUMBER
-      if (!from) throw new Error('Twilio phone number not configured.')
+      const from = settings?.twilio_phone_number
+      if (!from) throw new Error('Twilio phone number not configured. Add it in Settings → Integrations.')
       return res.status(200).json(await sendTwilio(to, body, from, settings))
     }
 
     if (action === 'whatsapp') {
-      const from = settings?.twilio_whatsapp_number || process.env.TWILIO_WHATSAPP_NUMBER
-      if (!from) throw new Error('Twilio WhatsApp number not configured.')
+      const from = settings?.twilio_whatsapp_number
+      if (!from) throw new Error('Twilio WhatsApp number not configured. Add it in Settings → Integrations.')
       const toWA = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`
       const fromWA = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`
       return res.status(200).json(await sendTwilio(toWA, body, fromWA, settings))

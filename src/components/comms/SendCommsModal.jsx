@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -22,10 +22,18 @@ const normalisePhone = (raw) => {
 }
 
 export default function SendCommsModal({ open, onClose, participant, templates, study, onSent }) {
-  const { workspace } = useApp()
+  const { workspace, ownWorkspace } = useApp()
   const { toast } = useToast()
   const [selectedId, setSelectedId] = useState('')
   const [sending, setSending] = useState(false)
+  const [commsSettings, setCommsSettings] = useState(null)
+
+  useEffect(() => {
+    const wsId = ownWorkspace?.id || workspace?.id
+    if (!wsId) return
+    supabase.from('workspace_settings').select('*').eq('workspace_id', wsId).maybeSingle()
+      .then(({ data }) => setCommsSettings(data || null))
+  }, [ownWorkspace?.id, workspace?.id])
 
   const selected = templates.find(t => t.id === selectedId)
   const preview  = selected ? applyTemplateVars(selected.body, participant, study) : ''
@@ -38,9 +46,9 @@ export default function SendCommsModal({ open, onClose, participant, templates, 
       const subject = applyTemplateVars(selected.subject || '', participant, study)
 
       let result
-      if      (selected.channel === 'email')    result = await sendEmail({ to: participant.email, subject, body, isHtml: selected.is_html, workspace_id: workspace.id })
-      else if (selected.channel === 'whatsapp') result = await sendWhatsApp({ to: normalisePhone(participant.phone), body, workspace_id: workspace.id })
-      else if (selected.channel === 'sms')      result = await sendSMS({ to: normalisePhone(participant.phone), body, workspace_id: workspace.id })
+      if      (selected.channel === 'email')    result = await sendEmail({ to: participant.email, subject, body, isHtml: selected.is_html, workspace_id: workspace.id, comms_settings: commsSettings })
+      else if (selected.channel === 'whatsapp') result = await sendWhatsApp({ to: normalisePhone(participant.phone), body, workspace_id: workspace.id, comms_settings: commsSettings })
+      else if (selected.channel === 'sms')      result = await sendSMS({ to: normalisePhone(participant.phone), body, workspace_id: workspace.id, comms_settings: commsSettings })
 
       const status = result?.error ? 'failed' : 'sent'
 

@@ -32,7 +32,7 @@ const CHANNEL_ICONS = { email: Mail, whatsapp: MessageCircle, sms: MessageCircle
 export default function ParticipantProfile() {
   const { studyId, participantId } = useParams()
   const navigate  = useNavigate()
-  const { workspace } = useApp()
+  const { workspace, ownWorkspace } = useApp()
   const { toast } = useToast()
 
   const { participants, update } = useParticipants(studyId)
@@ -60,10 +60,18 @@ export default function ParticipantProfile() {
   const [sendingPrize, setSendingPrize] = useState(false)
   const [fileUrls, setFileUrls]       = useState({})
   const [cancelling, setCancelling]   = useState(false)
+  const [commsSettings, setCommsSettings] = useState(null)
 
   useEffect(() => {
     if (participant && !form) setForm({ ...participant })
   }, [participant])
+
+  useEffect(() => {
+    const wsId = ownWorkspace?.id || workspace?.id
+    if (!wsId) return
+    supabase.from('workspace_settings').select('*').eq('workspace_id', wsId).maybeSingle()
+      .then(({ data }) => setCommsSettings(data || null))
+  }, [ownWorkspace?.id, workspace?.id])
 
   useEffect(() => {
     if (!study?.id) return
@@ -177,14 +185,14 @@ export default function ParticipantProfile() {
       if (prizeTemplate) {
         const body    = applyTemplateVars(prizeTemplate.body, pWithCode, study)
         const subject = applyTemplateVars(prizeTemplate.subject || 'Your prize is here!', pWithCode, study)
-        await sendEmail({ to: participant.email, subject, body, isHtml: prizeTemplate.is_html, workspace_id: workspace.id })
+        await sendEmail({ to: participant.email, subject, body, isHtml: prizeTemplate.is_html, workspace_id: workspace.id, comms_settings: commsSettings })
         await supabase.from('send_log').insert({ workspace_id: workspace.id, participant_id: participantId, template_id: prizeTemplate.id, channel: 'email', status: 'sent', subject, body_preview: body.slice(0,200) })
       }
 
       const normPhone = (raw) => raw?.includes('|') ? `${raw.split('|')[0]}${raw.split('|')[1].replace(/\D/g,'')}` : (raw || '')
       if (waTemplate && participant.phone) {
         const body = applyTemplateVars(waTemplate.body, pWithCode, study)
-        await sendWhatsApp({ to: normPhone(participant.phone), body, workspace_id: workspace.id })
+        await sendWhatsApp({ to: normPhone(participant.phone), body, workspace_id: workspace.id, comms_settings: commsSettings })
         await supabase.from('send_log').insert({ workspace_id: workspace.id, participant_id: participantId, template_id: waTemplate.id, channel: 'whatsapp', status: 'sent', body_preview: body.slice(0,200) })
       }
 
