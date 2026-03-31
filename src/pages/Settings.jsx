@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Plus, Trash2, Check, Calendar, AlertCircle, Send, Users, Zap, Eye, EyeOff, Sparkles } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const CHANNEL_COLORS = { email: 'blue', whatsapp: 'success', sms: 'secondary' }
 const ROLE_LABELS = { viewer: 'Can view', editor: 'Can edit' }
@@ -28,6 +29,7 @@ export default function Settings() {
 
   const [showTemplate, setShowTemplate]     = useState(false)
   const [editingTemplate, setEditingTemplate] = useState(null)
+  const [confirmState, setConfirmState] = useState(null)
   const [wsName, setWsName]                 = useState(workspace?.name || '')
   const [savingWs, setSavingWs]             = useState(false)
   const [gcalStatus, setGcalStatus]         = useState(null) // null | 'connected' | 'missing'
@@ -171,9 +173,10 @@ export default function Settings() {
   }
 
   const handleRemoveMember = async (memberId) => {
-    if (!confirm("Remove this person's access?")) return
-    await supabase.from('workspace_members').delete().eq('id', memberId)
-    setMembers(prev => prev.filter(m => m.id !== memberId))
+    setConfirmState({ title: "Remove this person's access?", onConfirm: async () => {
+      await supabase.from('workspace_members').delete().eq('id', memberId)
+      setMembers(prev => prev.filter(m => m.id !== memberId))
+    }})
   }
 
   const saveWorkspace = async () => {
@@ -202,11 +205,12 @@ export default function Settings() {
   }
 
   const handleDisconnectGoogle = async () => {
-    if (!confirm('Disconnect Google Calendar? Sync will stop working.')) return
-    await supabase.from('google_tokens').delete().eq('workspace_id', workspace.id)
-    setGcalStatus('missing')
-    setGcalEmail('')
-    toast({ title: 'Disconnected', variant: 'success' })
+    setConfirmState({ title: 'Disconnect Google Calendar?', description: 'Sync will stop working.', onConfirm: async () => {
+      await supabase.from('google_tokens').delete().eq('workspace_id', workspace.id)
+      setGcalStatus('missing')
+      setGcalEmail('')
+      toast({ title: 'Disconnected', variant: 'success' })
+    }})
   }
 
   const openTestSend = async (t) => {
@@ -601,7 +605,7 @@ export default function Settings() {
                       <Send className="h-3 w-3" /> Test
                     </Button>
                     <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditingTemplate(t); setShowTemplate(true) }}>Edit</Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => { if (confirm('Delete?')) remove(t.id) }}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={() => setConfirmState({ title: 'Delete template?', onConfirm: () => remove(t.id) })}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -672,6 +676,14 @@ export default function Settings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title}
+        description={confirmState?.description}
+        onConfirm={() => { confirmState?.onConfirm(); setConfirmState(null) }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   )
 }

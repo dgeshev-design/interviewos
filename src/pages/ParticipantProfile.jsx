@@ -26,6 +26,7 @@ import {
   ArrowLeft, Star, Tag, Plus, X, Upload, FileText, Image, Video,
   File, Trash2, Send, Gift, Mail, MessageCircle, ExternalLink, Quote, Check, XCircle, Sparkles
 } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const FILE_ICONS = { video: Video, image: Image, document: FileText, transcript: File }
 const CHANNEL_ICONS = { email: Mail, whatsapp: MessageCircle, sms: MessageCircle }
@@ -61,6 +62,7 @@ export default function ParticipantProfile() {
   const [sendingPrize, setSendingPrize] = useState(false)
   const [fileUrls, setFileUrls]       = useState({})
   const [cancelling, setCancelling]   = useState(false)
+  const [confirmState, setConfirmState] = useState(null)
   const [commsSettings, setCommsSettings] = useState(null)
   const [summaryKey, setSummaryKey]   = useState(0)
   const [aiSettings, setAiSettings]   = useState(null)
@@ -219,32 +221,38 @@ export default function ParticipantProfile() {
   }
 
   const handleCancel = async () => {
-    if (!confirm('Cancel this booking? The Google Calendar event will be deleted and the slot freed up.')) return
-    setCancelling(true)
-    try {
-      // Find the slot booked by this participant
-      const { data: slotRows } = await supabase
-        .from('slots')
-        .select('id, gcal_event_id')
-        .eq('participant_id', participantId)
-        .maybeSingle()
+    setConfirmState({
+      title: 'Cancel this booking?',
+      description: 'The Google Calendar event will be deleted and the slot freed up.',
+      confirmLabel: 'Cancel booking',
+      onConfirm: async () => {
+        setCancelling(true)
+        try {
+          // Find the slot booked by this participant
+          const { data: slotRows } = await supabase
+            .from('slots')
+            .select('id, gcal_event_id')
+            .eq('participant_id', participantId)
+            .maybeSingle()
 
-      // Remove the booked slot (dynamic model — available slots are computed, not stored)
-      if (slotRows) {
-        await supabase.from('slots').delete().eq('id', slotRows.id)
-        if (slotRows.gcal_event_id) {
-          await cancelCalEvent({ workspaceId: workspace.id, eventId: slotRows.gcal_event_id })
+          // Remove the booked slot (dynamic model — available slots are computed, not stored)
+          if (slotRows) {
+            await supabase.from('slots').delete().eq('id', slotRows.id)
+            if (slotRows.gcal_event_id) {
+              await cancelCalEvent({ workspaceId: workspace.id, eventId: slotRows.gcal_event_id })
+            }
+          }
+
+          // Mark participant cancelled
+          await update(participantId, { status: 'cancelled' })
+          setForm(f => ({ ...f, status: 'cancelled' }))
+          toast({ title: 'Booking cancelled', description: 'Slot freed and calendar event removed.', variant: 'success' })
+        } catch (e) {
+          toast({ title: 'Failed to cancel', description: e.message, variant: 'destructive' })
         }
+        setCancelling(false)
       }
-
-      // Mark participant cancelled
-      await update(participantId, { status: 'cancelled' })
-      setForm(f => ({ ...f, status: 'cancelled' }))
-      toast({ title: 'Booking cancelled', description: 'Slot freed and calendar event removed.', variant: 'success' })
-    } catch (e) {
-      toast({ title: 'Failed to cancel', description: e.message, variant: 'destructive' })
-    }
-    setCancelling(false)
+    })
   }
 
   const setRating = (r) => {
@@ -867,6 +875,15 @@ export default function ParticipantProfile() {
           onSent={() => refetchLogs()}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title}
+        description={confirmState?.description}
+        confirmLabel={confirmState?.confirmLabel || 'Delete'}
+        onConfirm={() => { confirmState?.onConfirm(); setConfirmState(null) }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   )
 }

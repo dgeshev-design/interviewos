@@ -14,6 +14,7 @@ import { useApp } from '@/context/AppContext'
 import { cn, formatDate } from '@/lib/utils'
 import { Plus, Users, ArrowRight, MoreHorizontal, Copy } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const STATUS_COLORS = {
   active: 'success',
@@ -30,6 +31,7 @@ export default function Studies() {
   const [showNew, setShowNew]   = useState(false)
   const [form, setForm]         = useState({ name: '', description: '', target_count: 10, status: 'active' })
   const [saving, setSaving]     = useState(false)
+  const [confirmState, setConfirmState] = useState(null)
 
   const handleCreate = async () => {
     if (!form.name) return
@@ -122,7 +124,7 @@ export default function Studies() {
                           }}>
                             <Copy className="h-3.5 w-3.5 mr-2" /> Duplicate study
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this study?')) remove(study.id) }}>
+                          <DropdownMenuItem className="text-destructive" onClick={() => setConfirmState({ title: 'Delete study?', description: 'This cannot be undone.', onConfirm: () => remove(study.id) })}>
                             Delete study
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -164,6 +166,14 @@ export default function Studies() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title}
+        description={confirmState?.description}
+        onConfirm={() => { confirmState?.onConfirm(); setConfirmState(null) }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   )
 }

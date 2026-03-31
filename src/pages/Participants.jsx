@@ -3,6 +3,7 @@ import { useParticipants } from '@/hooks/useParticipants'
 import ParticipantCard from '@/components/ParticipantCard'
 import Modal from '@/components/Modal'
 import Icon from '@/components/Icon'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const EMPTY = { name: '', email: '', phone: '', age_group: '', location: '', status: 'booked', booked_at: '', meet_link: '', notes: '' }
 
@@ -70,6 +71,7 @@ export default function Participants() {
   const [newP, setNewP] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [confirmState, setConfirmState] = useState(null)
 
   const filtered = participants.filter(p => {
     const matchF = filter === 'all' || p.status === filter
@@ -94,8 +96,9 @@ export default function Participants() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this participant?')) return
-    try { await remove(id) } catch (e) { alert(e.message) }
+    setConfirmState({ title: 'Delete this participant?', onConfirm: async () => {
+      try { await remove(id) } catch (e) { alert(e.message) }
+    }})
   }
 
   return (
@@ -178,6 +181,14 @@ export default function Participants() {
           onClose={() => { setEditing(null); setError('') }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title}
+        description={confirmState?.description}
+        onConfirm={() => { confirmState?.onConfirm(); setConfirmState(null) }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   )
 }

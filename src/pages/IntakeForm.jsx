@@ -5,6 +5,7 @@ import { usePublishedForm } from '@/hooks/usePublishedForm'
 import { useApp } from '@/context/AppContext'
 import Modal from '@/components/Modal'
 import Icon from '@/components/Icon'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const EMPTY_FIELD = { label: '', field_type: 'text', required: false, options: '' }
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -31,6 +32,7 @@ export default function IntakeForm() {
   const [publishing, setPublishing] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [genResult, setGenResult]   = useState(null)
+  const [confirmState, setConfirmState] = useState(null)
 
   // Availability window state
   const [window_, setWindow_] = useState({
@@ -55,8 +57,9 @@ export default function IntakeForm() {
   }
 
   const handleUnpublish = async () => {
-    if (!confirm('Unpublish this form? The link will stop working.')) return
-    await unpublish()
+    setConfirmState({ title: 'Unpublish this form?', description: 'The link will stop working.', onConfirm: async () => {
+      await unpublish()
+    }})
   }
 
   const copyLink = () => {
@@ -424,6 +427,13 @@ export default function IntakeForm() {
         </Modal>
       )}
 
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title}
+        description={confirmState?.description}
+        onConfirm={() => { confirmState?.onConfirm(); setConfirmState(null) }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   )
 }

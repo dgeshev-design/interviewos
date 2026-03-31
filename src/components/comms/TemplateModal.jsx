@@ -10,6 +10,22 @@ import { TRIGGER_LABELS } from '@/lib/utils'
 const CHANNELS = ['email', 'whatsapp', 'sms']
 const TRIGGERS = Object.entries(TRIGGER_LABELS)
 
+const SAMPLE_VARS = {
+  '{{name}}': 'Jane Smith',
+  '{{email}}': 'jane@example.com',
+  '{{phone}}': '+447911123456',
+  '{{study}}': 'UX Research Study',
+  '{{date}}': '15 April 2026',
+  '{{time}}': '14:00',
+  '{{link}}': 'https://meet.google.com/abc-xyz',
+  '{{prize_code}}': 'PRIZE50',
+}
+
+function applyPreviewVars(text) {
+  if (!text) return ''
+  return Object.entries(SAMPLE_VARS).reduce((t, [k, v]) => t.replaceAll(k, v), text)
+}
+
 export default function TemplateModal({ open, onClose, onSave, initial }) {
   const [form, setForm] = useState(initial || {
     name: '', trigger_type: 'booking_confirmed', channel: 'email',
@@ -18,6 +34,10 @@ export default function TemplateModal({ open, onClose, onSave, initial }) {
   const [saving, setSaving] = useState(false)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleChannelChange = (v) => {
+    setForm(f => ({ ...f, channel: v, is_html: v === 'email' ? f.is_html : false }))
+  }
 
   const handleSave = async () => {
     if (!form.name || !form.body) return
@@ -34,69 +54,118 @@ export default function TemplateModal({ open, onClose, onSave, initial }) {
     return `${m} min after session`
   }
 
+  const previewBody = applyPreviewVars(form.body)
+  const previewSubject = applyPreviewVars(form.subject)
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initial?.id ? 'Edit template' : 'New template'}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Template name</Label>
-              <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Booking confirmation" />
+        <div className="grid grid-cols-5 gap-6 py-2">
+
+          {/* ── Left: Preview ── */}
+          <div className="col-span-2 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preview</p>
+            <div className="rounded-lg border bg-muted/20 overflow-hidden min-h-[300px]">
+              {form.channel === 'email' ? (
+                <div className="text-xs">
+                  {previewSubject && (
+                    <div className="px-4 py-2 border-b bg-muted/40">
+                      <span className="text-muted-foreground">Subject: </span>
+                      <span className="font-medium">{previewSubject}</span>
+                    </div>
+                  )}
+                  <div className="p-4">
+                    {form.is_html ? (
+                      <iframe
+                        srcDoc={previewBody || '<p style="color:#9ca3af;font-size:13px">Preview will appear here…</p>'}
+                        className="w-full border-0"
+                        style={{ minHeight: 260 }}
+                        sandbox="allow-same-origin"
+                        title="Email preview"
+                      />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">
+                        {previewBody || <span className="text-muted-foreground">Preview will appear here…</span>}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 flex items-end">
+                  <div className="max-w-[85%] bg-white border rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                      {previewBody || <span className="text-muted-foreground">Preview will appear here…</span>}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <Label>Channel</Label>
-              <Select value={form.channel} onValueChange={v => set('channel', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CHANNELS.map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            <p className="text-[11px] text-muted-foreground">Sample values used for preview.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Trigger</Label>
-              <Select value={form.trigger_type} onValueChange={v => set('trigger_type', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TRIGGERS.map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Send timing</Label>
-              <div className="space-y-1">
-                <Input
-                  type="number"
-                  value={form.trigger_offset}
-                  onChange={e => set('trigger_offset', Number(e.target.value))}
-                  placeholder="0"
-                />
-                <p className="text-xs text-muted-foreground">{triggerOffsetLabel()}</p>
+          {/* ── Right: Form ── */}
+          <div className="col-span-3 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Template name</Label>
+                <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Booking confirmation" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Channel</Label>
+                <Select value={form.channel} onValueChange={handleChannelChange}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CHANNELS.map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </div>
 
-          {form.channel === 'email' && (
-            <div className="space-y-1.5">
-              <Label>Subject line</Label>
-              <Input value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="Your interview is confirmed!" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Trigger</Label>
+                <Select value={form.trigger_type} onValueChange={v => set('trigger_type', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TRIGGERS.map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Send timing</Label>
+                <div className="space-y-1">
+                  <Input
+                    type="number"
+                    value={form.trigger_offset}
+                    onChange={e => set('trigger_offset', Number(e.target.value))}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-muted-foreground">{triggerOffsetLabel()}</p>
+                </div>
+              </div>
             </div>
-          )}
 
-          <div className="space-y-1.5">
-            <Label>Message body</Label>
-            <HtmlEditor
-              value={form.body}
-              onChange={v => set('body', v)}
-              isHtml={form.is_html}
-              onToggleHtml={v => set('is_html', v)}
-            />
+            {form.channel === 'email' && (
+              <div className="space-y-1.5">
+                <Label>Subject line</Label>
+                <Input value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="Your interview is confirmed!" />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label>Message body</Label>
+              <HtmlEditor
+                value={form.body}
+                onChange={v => set('body', v)}
+                isHtml={form.is_html}
+                onToggleHtml={v => set('is_html', v)}
+                showHtmlToggle={form.channel === 'email'}
+              />
+            </div>
           </div>
         </div>
 

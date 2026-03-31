@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast'
 import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 import NotionEditor from '@/components/ui/notion-editor'
 import { callAI } from '@/lib/api'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const EMPTY_P = { name: '', email: '', phone: '', age_group: '', location: '', status: 'booked', booked_at: '', meet_link: '', notes: '' }
@@ -69,6 +70,8 @@ export default function StudyDetail() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') || 'participants'
   const setTab = (t) => setSearchParams(p => { const n = new URLSearchParams(p); n.set('tab', t); return n }, { replace: true })
+
+  const [confirmState, setConfirmState] = useState(null)
 
   // Participants
   const [search, setSearch]   = useState('')
@@ -234,11 +237,12 @@ export default function StudyDetail() {
 
   const removeStep = async (stepNum) => {
     if (stepNum <= 1) return
-    if (!confirm(`Remove Step ${stepNum}? Its fields will be moved to Step 1.`)) return
-    const fields = (form.fields || []).map(f => f.step === stepNum ? { ...f, step: 1 } : f)
-    const titles = (form.step_titles || []).slice(0, stepNum - 1)
-    setActiveStep(Math.min(activeStep, stepNum - 1))
-    await saveForm({ fields, step_titles: titles })
+    setConfirmState({ title: `Remove Step ${stepNum}?`, description: 'Its fields will be moved to Step 1.', onConfirm: async () => {
+      const fields = (form.fields || []).map(f => f.step === stepNum ? { ...f, step: 1 } : f)
+      const titles = (form.step_titles || []).slice(0, stepNum - 1)
+      setActiveStep(Math.min(activeStep, stepNum - 1))
+      await saveForm({ fields, step_titles: titles })
+    }})
   }
 
   const openNewField = () => {
@@ -846,7 +850,7 @@ export default function StudyDetail() {
                             </Button>
                             {!f.system && (
                               <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive"
-                                onClick={() => { if (confirm('Delete this field?')) deleteField(f.id) }}>
+                                onClick={() => setConfirmState({ title: 'Delete this field?', onConfirm: () => deleteField(f.id) })}>
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             )}
@@ -1184,6 +1188,14 @@ export default function StudyDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title}
+        description={confirmState?.description}
+        onConfirm={() => { confirmState?.onConfirm(); setConfirmState(null) }}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   )
 }
