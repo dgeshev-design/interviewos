@@ -1,49 +1,22 @@
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useApp } from '@/context/AppContext'
 
 export function useParticipants(studyId = null) {
-  const { workspace } = useApp()
-  const [participants, setParticipants] = useState([])
-  const [loading, setLoading] = useState(true)
+  const {
+    participants: all, participantsLoading: loading,
+    addParticipant: addFn, updateParticipant: update, removeParticipant: remove,
+    refetchParticipants: refetch,
+  } = useApp()
 
-  const fetch = useCallback(async () => {
-    if (!workspace) return
-    setLoading(true)
-    let q = supabase.from('participants').select('*').eq('workspace_id', workspace.id)
-    if (studyId) q = q.eq('study_id', studyId)
-    const { data } = await q.order('created_at', { ascending: false })
-    setParticipants(data || [])
-    setLoading(false)
-  }, [workspace, studyId])
+  const participants = studyId ? all.filter(p => p.study_id === studyId) : all
 
-  useEffect(() => { fetch() }, [fetch])
+  const add = (p) => addFn({ ...p, study_id: studyId || p.study_id })
 
-  const add = async (p) => {
-    const { data, error } = await supabase
-      .from('participants').insert({ ...p, workspace_id: workspace.id }).select().single()
-    if (error) throw new Error(error.message)
-    setParticipants(prev => [data, ...prev])
-    return data
-  }
-
-  const update = async (id, changes) => {
-    const { data, error } = await supabase
-      .from('participants').update(changes).eq('id', id).select().single()
-    if (error) throw new Error(error.message)
-    setParticipants(prev => prev.map(p => p.id === id ? data : p))
-    return data
-  }
-
-  const remove = async (id) => {
-    await supabase.from('participants').delete().eq('id', id)
-    setParticipants(prev => prev.filter(p => p.id !== id))
-  }
-
+  // getOne still hits DB directly since it's used for fresh data after form submission
   const getOne = async (id) => {
+    const { supabase } = await import('@/lib/supabase')
     const { data } = await supabase.from('participants').select('*').eq('id', id).single()
     return data
   }
 
-  return { participants, loading, refetch: fetch, add, update, remove, getOne }
+  return { participants, loading, add, update, remove, refetch, getOne }
 }

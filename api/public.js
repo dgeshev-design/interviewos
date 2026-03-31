@@ -142,6 +142,7 @@ export default async function handler(req, res) {
       const bookedSlots = await bookedR.json()
 
       const slots = computeSlots(rule, gcalBlocks, bookedSlots, bookingConfig)
+      res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60')
       return res.status(200).json({ study, forms, slots, bookingConfig, ruleDaysOfWeek: rule?.days_of_week || null })
     } catch (e) { return res.status(500).json({ error: e.message }) }
   }
