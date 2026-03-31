@@ -64,7 +64,9 @@ export default function ParticipantProfile() {
   const [commsSettings, setCommsSettings] = useState(null)
   const [summaryKey, setSummaryKey]   = useState(0)
   const [aiSettings, setAiSettings]   = useState(null)
-  const [aiLoading, setAiLoading]     = useState('')  // '' | 'quotes' | 'summary'
+  const [aiLoading, setAiLoading]     = useState('')  // '' | 'quotes' | 'summary' | 'search'
+  const [quoteSearch, setQuoteSearch] = useState('')
+  const [searchResult, setSearchResult] = useState(null) // null | { found: bool, quotes: string[] }
 
   useEffect(() => {
     if (participant && !form) setForm({ ...participant })
@@ -169,6 +171,25 @@ export default function ParticipantProfile() {
       toast({ title: 'Summary generated', variant: 'success', action: <ToastAction altText="View summary" onClick={() => setTab('overview')}>View</ToastAction> })
     } catch (e) {
       toast({ title: 'AI error', description: e.message, variant: 'destructive' })
+    }
+    setAiLoading('')
+  }
+
+  const searchTranscript = async () => {
+    if (!form.transcript || !quoteSearch.trim() || !aiSettings?.api_key) return
+    setAiLoading('search')
+    setSearchResult(null)
+    try {
+      const result = await callAI({
+        action: 'mark-quotes',
+        transcript: `The user wants to find mentions of: "${quoteSearch.trim()}"\n\nIf the transcript contains relevant mentions, extract up to 5 verbatim quotes related to this topic. If there is NO mention of this topic, return an empty array []. Return ONLY a JSON array of strings.\n\nTranscript:\n${form.transcript.slice(0, 12000)}`,
+        ai_settings: aiSettings,
+      })
+      if (result.error) throw new Error(result.error)
+      const quotes = result.quotes || []
+      setSearchResult({ found: quotes.length > 0, quotes })
+    } catch (e) {
+      toast({ title: 'Search failed', description: e.message, variant: 'destructive' })
     }
     setAiLoading('')
   }
@@ -584,6 +605,38 @@ export default function ParticipantProfile() {
                     </div>
                   </div>
                 </CardHeader>
+                {aiSettings?.enabled && aiSettings?.api_key && form.transcript && (
+                  <div className="px-6 pb-3 flex gap-2">
+                    <Input
+                      placeholder="Search transcript for a topic… e.g. pricing, trust, onboarding"
+                      value={quoteSearch}
+                      onChange={e => { setQuoteSearch(e.target.value); setSearchResult(null) }}
+                      onKeyDown={e => { if (e.key === 'Enter' && quoteSearch.trim()) searchTranscript() }}
+                      className="text-sm"
+                    />
+                    <Button size="sm" variant="outline" className="shrink-0 gap-1" onClick={searchTranscript} disabled={!quoteSearch.trim() || aiLoading === 'search'}>
+                      <Sparkles className="h-3 w-3" />
+                      {aiLoading === 'search' ? 'Searching…' : 'Search'}
+                    </Button>
+                  </div>
+                )}
+                {searchResult && (
+                  <div className="px-6 pb-4 space-y-2">
+                    {searchResult.found ? (
+                      <>
+                        <p className="text-xs text-muted-foreground">Found {searchResult.quotes.length} mention{searchResult.quotes.length !== 1 ? 's' : ''} of <span className="font-medium">"{quoteSearch}"</span></p>
+                        {searchResult.quotes.map((q, i) => (
+                          <div key={i} className="flex items-start justify-between gap-2 p-2.5 rounded-md border bg-muted/20">
+                            <p className="text-sm italic flex-1">"{q}"</p>
+                            <Button size="sm" variant="ghost" className="h-6 text-xs shrink-0 px-2" onClick={() => addQuote(q)}>+ Add</Button>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No mention of <span className="font-medium">"{quoteSearch}"</span> found in this transcript.</p>
+                    )}
+                  </div>
+                )}
                 <CardContent>
                   <textarea
                     className="w-full min-h-[360px] text-sm rounded-md border bg-background px-3 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-ring font-mono leading-relaxed"
