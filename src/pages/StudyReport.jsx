@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 
@@ -76,6 +76,8 @@ export default function StudyReport() {
   if (error)   return <div style={s.page}><div style={s.wrap}><div style={s.err}>{error}</div></div></div>
 
   const { study, participants } = data
+  const [openIds, setOpenIds] = useState(new Set())
+  const toggle = useCallback((id) => setOpenIds(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n }), [])
 
   return (
     <div style={s.page}>
@@ -108,56 +110,76 @@ export default function StudyReport() {
           {participants.length === 0 && (
             <div style={{ ...s.card, color: '#9ca3af', fontSize: 14 }}>No participants yet.</div>
           )}
-          {participants.map(p => (
-            <div key={p.id} style={s.card}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15, color: '#111827' }}>{p.name}</div>
-                  {p.booked_at && (
-                    <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
-                      {format(parseISO(p.booked_at), 'MMM d, yyyy · h:mm a')}
+          {participants.map(p => {
+            const isOpen = openIds.has(p.id)
+            const hasContent = p.summary || (p.quotes || []).length > 0
+            return (
+              <div key={p.id} style={s.card}>
+                {/* Header row — always visible, click to toggle */}
+                <div
+                  onClick={() => hasContent && toggle(p.id)}
+                  style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', cursor: hasContent ? 'pointer' : 'default' }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {p.name}
+                      {hasContent && (
+                        <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400 }}>
+                          {isOpen ? '▲ collapse' : '▼ expand'}
+                        </span>
+                      )}
                     </div>
-                  )}
-                  {p.rating > 0 && (
-                    <div style={{ display: 'flex', gap: 2, marginTop: 6 }}>
-                      {[1,2,3,4,5].map(r => (
-                        <span key={r} style={{ fontSize: 14, color: r <= p.rating ? '#f59e0b' : '#e5e7eb' }}>★</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                  <span style={s.tag(statusColor[p.status] || '#6b7280')}>{p.status}</span>
-                  {p.recording_url && (
-                    <a href={p.recording_url} target="_blank" rel="noopener noreferrer"
-                      style={{ fontSize: 12, color: '#6366f1', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      ▶ Recording
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {p.summary && (
-                <>
-                  <hr style={s.divider} />
-                  <span style={s.label}>Summary</span>
-                  <div style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.6 }}>{renderEditorContent(p.summary)}</div>
-                </>
-              )}
-
-              {(p.quotes || []).length > 0 && (
-                <>
-                  <hr style={s.divider} />
-                  <span style={s.label}>Key quotes</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {p.quotes.map((q, i) => (
-                      <div key={q.id || i} style={s.quoteBlock}>"{q.text}"</div>
-                    ))}
+                    {p.booked_at && (
+                      <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+                        {format(parseISO(p.booked_at), 'MMM d, yyyy · h:mm a')}
+                      </div>
+                    )}
+                    {p.rating > 0 && (
+                      <div style={{ display: 'flex', gap: 2, marginTop: 6 }}>
+                        {[1,2,3,4,5].map(r => (
+                          <span key={r} style={{ fontSize: 14, color: r <= p.rating ? '#f59e0b' : '#e5e7eb' }}>★</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </>
-              )}
-            </div>
-          ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                    <span style={s.tag(statusColor[p.status] || '#6b7280')}>{p.status}</span>
+                    {p.recording_url && (
+                      <a href={p.recording_url} target="_blank" rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        style={{ fontSize: 12, color: '#6366f1', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        ▶ Recording
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Collapsible content */}
+                {isOpen && (
+                  <>
+                    {p.summary && (
+                      <>
+                        <hr style={s.divider} />
+                        <span style={s.label}>Summary</span>
+                        <div style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.6 }}>{renderEditorContent(p.summary)}</div>
+                      </>
+                    )}
+                    {(p.quotes || []).length > 0 && (
+                      <>
+                        <hr style={s.divider} />
+                        <span style={s.label}>Key quotes</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {p.quotes.map((q, i) => (
+                            <div key={q.id || i} style={s.quoteBlock}>"{q.text}"</div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+          })}
         </div>
 
       </div>
