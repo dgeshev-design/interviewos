@@ -539,7 +539,7 @@ export default function Settings() {
               <Input
                 value={aiForm.model}
                 onChange={e => setAiForm(f => ({ ...f, model: e.target.value }))}
-                placeholder={aiForm.provider === 'claude' ? 'claude-haiku-4-5-20251001' : aiForm.provider === 'gemini' ? 'gemini-1.5-flash' : 'gpt-4o-mini'}
+                placeholder={aiForm.provider === 'claude' ? 'claude-haiku-4-5-20251001' : aiForm.provider === 'gemini' ? 'gemini-2.0-flash' : 'gpt-4o-mini'}
                 className="font-mono text-sm max-w-md"
               />
             </div>

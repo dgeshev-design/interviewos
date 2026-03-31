@@ -33,14 +33,14 @@ async function callClaude(messages, apiKey, model) {
 }
 
 async function callGemini(messages, apiKey, model) {
-  const modelId = model || 'gemini-1.5-flash'
+  const modelId = model || 'gemini-2.0-flash'
   // Gemini needs alternating user/model roles; collapse system messages into user
   const contents = messages.map(m => ({
     role: m.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: m.content }],
   }))
   const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1/models/${modelId}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
