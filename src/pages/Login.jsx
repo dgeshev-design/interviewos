@@ -1,23 +1,22 @@
 import { useEffect } from 'react'
 import { useApp } from '@/context/AppContext'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 
 export default function Login() {
   useEffect(() => { document.title = 'InterviewOS' }, [])
-  const { signInWithGoogle, authError, darkMode, toggleDarkMode } = useApp()
+  const { signInWithGoogle, authError } = useApp()
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold tracking-tight">
-            Interview<span className="text-primary">OS</span>
+            Interview<span className="text-brand-500">OS</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Research operations platform</p>
         </div>
 
-        <div className="bg-card rounded-xl border shadow-sm p-8">
+        <div className="bg-white rounded-xl border shadow-sm p-8">
           <h2 className="text-base font-semibold mb-1">Sign in</h2>
           <p className="text-sm text-muted-foreground mb-6">
             Access is restricted to{' '}
@@ -46,11 +45,6 @@ export default function Login() {
         <p className="text-center text-xs text-muted-foreground mt-6">
           Each account has a fully isolated private workspace.
         </p>
-
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <span className="text-xs text-muted-foreground">Dark mode</span>
-          <Switch checked={darkMode} onCheckedChange={toggleDarkMode} />
-        </div>
       </div>
     </div>
   )

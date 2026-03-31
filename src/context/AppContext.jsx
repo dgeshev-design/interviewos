@@ -2,8 +2,6 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import { supabase } from '@/lib/supabase'
 import { saveGoogleToken } from '@/lib/api'
 
-const DARK_KEY = 'darkMode'
-
 const AppContext = createContext(null)
 
 const ALLOWED_DOMAINS = (import.meta.env.VITE_ALLOWED_DOMAINS || 'betty.com')
@@ -19,16 +17,6 @@ export function AppProvider({ children }) {
   const [canEdit, setCanEdit]         = useState(true)
   const [loading, setLoading]         = useState(true)
   const [authError, setAuthError]     = useState(null)
-
-  // ── Dark mode ──────────────────────────────────────────────────────────
-  const [darkMode, setDarkModeState] = useState(() => localStorage.getItem(DARK_KEY) === 'true')
-
-  const toggleDarkMode = useCallback((val) => {
-    const next = typeof val === 'boolean' ? val : !darkMode
-    setDarkModeState(next)
-    localStorage.setItem(DARK_KEY, String(next))
-    document.documentElement.classList.toggle('dark', next)
-  }, [darkMode])
 
   // ── Studies cache ──────────────────────────────────────────────────────
   const [studies, setStudies]           = useState([])
@@ -260,7 +248,6 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       user, workspace, ownWorkspace, workspaces, canEdit, loading, authError,
       signInWithGoogle, signOut, switchWorkspace,
-      darkMode, toggleDarkMode,
       // Studies
       studies, studiesLoading,
       addStudy, updateStudy, removeStudy, duplicateStudy,
