@@ -186,6 +186,17 @@ export default function StudyDetail() {
     if (formTab === 'fields') sendPreviewStep(activeStep)
   }, [activeStep, formTab])
 
+  // Send live branding to preview iframe whenever color/images change
+  useEffect(() => {
+    if (!form) return
+    previewIframeRef.current?.contentWindow?.postMessage({
+      type: 'previewForm',
+      primaryColor: form.primary_color,
+      bannerUrl: form.banner_url ?? null,
+      logoUrl: form.logo_url ?? null,
+    }, '*')
+  }, [form?.primary_color, form?.banner_url, form?.logo_url])
+
   // ── Load / create form ───────────────────────────────────────────────────
   const loadForm = useCallback(async () => {
     if (!studyId || !workspace) return

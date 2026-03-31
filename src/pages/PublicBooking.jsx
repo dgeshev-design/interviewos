@@ -7,9 +7,11 @@ import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 
 export default function PublicBooking() {
   const { studySlug } = useParams()
+  const isInIframe = window.self !== window.top
   const [data, setData]         = useState(null)
   const [step, setStep]         = useState('form') // form | book | done | disqualified
   const [formStep, setFormStep] = useState(1)
+  const [previewOverride, setPreviewOverride] = useState({})
   const [answers, setAnswers]   = useState({})
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [calendarDate, setCalendarDate] = useState(null)
@@ -24,7 +26,19 @@ export default function PublicBooking() {
   useEffect(() => {
     if (window.self === window.top) return // not in iframe — ignore
     const handler = (e) => {
-      if (e.data?.type === 'previewStep') setFormStep(Math.max(1, e.data.step))
+      if (e.data?.type === 'previewStep') {
+        const s = e.data.step
+        if (s === 'book') { setStep('book') }
+        else if (s === 'done') { setStep('done') }
+        else { setStep('form'); setFormStep(Math.max(1, s)) }
+      }
+      if (e.data?.type === 'previewForm') {
+        setPreviewOverride({
+          primaryColor: e.data.primaryColor ?? null,
+          bannerUrl: e.data.bannerUrl,
+          logoUrl: e.data.logoUrl,
+        })
+      }
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
@@ -60,15 +74,19 @@ export default function PublicBooking() {
   const fields        = activeForm?.fields || []
   const slots         = data?.slots || []
   const duration      = slots[0]?.duration_minutes || 60
-  const brandColor    = activeForm?.primary_color || '#6366f1'
-  const bannerUrl     = activeForm?.banner_url || null
-  const logoUrl       = activeForm?.logo_url || null
+  const brandColor    = previewOverride.primaryColor ?? activeForm?.primary_color ?? '#6366f1'
+  const bannerUrl     = 'bannerUrl' in previewOverride ? previewOverride.bannerUrl : (activeForm?.banner_url ?? null)
+  const logoUrl       = 'logoUrl' in previewOverride ? previewOverride.logoUrl : (activeForm?.logo_url ?? null)
 
   const stepCount        = fields.length ? Math.max(...fields.map(f => f.step || 1)) : 1
   const stepTitles       = activeForm?.step_titles || []
   const currentStepFields = fields.filter(f => (f.step || 1) === formStep)
 
   const handleFormSubmit = () => {
+    if (isInIframe) {
+      if (formStep < stepCount) { setFormStep(s => s + 1); return }
+      setStep('book'); return
+    }
     const missing = currentStepFields.filter(f => {
       if (!f.required) return false
       const val = answers[f.id]
@@ -99,6 +117,7 @@ export default function PublicBooking() {
   }
 
   const handleBooking = async () => {
+    if (isInIframe) { setStep('done'); return }
     setSubmitting(true); setError('')
     try {
       const res = await submitPublicForm({ studySlug, formId: activeForm?.id, answers, startsAt: selectedSlot, durationMinutes: duration })
@@ -148,6 +167,54 @@ export default function PublicBooking() {
     `}</style>
   )
 
+  // ── Preview step navigator (iframe only) ───────────────────────────────
+  const activeStepNum = step === 'form' ? formStep : step === 'book' ? stepCount + 1 : stepCount + 2
+  const stepNavLabels = [
+    ...Array.from({ length: stepCount }, (_, i) => stepTitles[i] || `Step ${i + 1}`),
+    'Calendar',
+    'Confirm',
+  ]
+  const stepNav = isInIframe ? (
+    <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 16 }}>
+      {stepNavLabels.map((label, i) => {
+        const n = i + 1
+        const isActive = n === activeStepNum
+        const isPast = n < activeStepNum
+        const isLast = i === stepNavLabels.length - 1
+        return (
+          <div key={n} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', minWidth: 0 }}>
+            {!isLast && (
+              <div style={{ position: 'absolute', top: 14, left: '50%', right: '-50%', height: 2, background: isPast ? brandColor : '#e5e7eb', zIndex: 0 }} />
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (i < stepCount) { setStep('form'); setFormStep(i + 1) }
+                else if (i === stepCount) setStep('book')
+                else setStep('done')
+              }}
+              style={{ zIndex: 1, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '0 4px', fontFamily: 'inherit' }}
+            >
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: isActive ? brandColor : isPast ? brandColor : '#e5e7eb',
+                color: isActive || isPast ? '#fff' : '#9ca3af',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 600,
+                boxShadow: isActive ? `0 0 0 3px ${brandColor}30` : 'none',
+              }}>
+                {isPast ? '✓' : n}
+              </div>
+              <span style={{ fontSize: 10, color: isActive ? brandColor : '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 60, textAlign: 'center', fontWeight: isActive ? 600 : 400 }}>
+                {label}
+              </span>
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  ) : null
+
   const logoEl = (
     <div style={s.logoWrap} className="pb-logo">
       {logoUrl
@@ -176,11 +243,26 @@ export default function PublicBooking() {
   if (step === 'done') return (
     <div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
       {logoEl}
+      {stepNav}
       <div style={s.card} className="pb-card">{cardTop}<div style={{...s.cardBody, textAlign:'center'}} className="pb-card-body">
         <div style={{fontSize:40,marginBottom:12}}>✅</div>
         <div style={s.h2}>You're booked!</div>
-        <p style={s.sub}>Thanks for signing up. You'll receive a confirmation with your session details shortly.</p>
-        <p style={{fontSize:12,color:'#9ca3af'}}>You can close this tab.</p>
+        {isInIframe ? (
+          <>
+            <p style={s.sub}>
+              <strong>Alex Johnson</strong> is confirmed for{' '}
+              <strong>Wednesday, 15 Apr at 2:00 PM</strong> · {duration} min
+            </p>
+            <p style={{fontSize:11,color:'#9ca3af',marginTop:8,padding:'8px 12px',background:'#f9fafb',borderRadius:6,border:'1px solid #e5e7eb',lineHeight:1.5}}>
+              Preview only — no real booking was made
+            </p>
+          </>
+        ) : (
+          <>
+            <p style={s.sub}>Thanks for signing up. You'll receive a confirmation with your session details shortly.</p>
+            <p style={{fontSize:12,color:'#9ca3af'}}>You can close this tab.</p>
+          </>
+        )}
       </div></div>
     </div></div>
   )
@@ -233,6 +315,7 @@ export default function PublicBooking() {
     return (
       <div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
         {logoEl}
+        {stepNav}
         <div style={s.card} className="pb-card">{cardTop}<div style={s.cardBody} className="pb-card-body">
 
           {/* Week navigation */}
@@ -342,6 +425,7 @@ export default function PublicBooking() {
   return (
     <div style={s.page} className="pb-page">{mobileStyles}<div style={s.wrap} className="pb-wrap">
       {logoEl}
+      {stepNav}
       <div style={s.card} className="pb-card">{cardTop}<div style={s.cardBody} className="pb-card-body">
         <div style={s.h2}>{data?.study?.name || 'Research session'}</div>
         <p style={s.sub}>{data?.study?.description || 'Complete this short form to register for a research session.'}</p>
