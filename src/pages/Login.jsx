@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { useApp } from '@/context/AppContext'
 import { Button } from '@/components/ui/button'
 
 export default function Login() {
+  useEffect(() => { document.title = 'InterviewOS' }, [])
   const { signInWithGoogle, authError } = useApp()
 
   return (

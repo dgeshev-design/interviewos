@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTemplates } from '@/hooks/useTemplates'
 import { useParticipants } from '@/hooks/useParticipants'
 import { useApp } from '@/context/AppContext'
@@ -25,6 +25,7 @@ function applyVars(text, p) {
 }
 
 export default function CommsHub() {
+  useEffect(() => { document.title = 'Communications | InterviewOS' }, [])
   const { workspace } = useApp()
   const { templates, loading, add, update, remove } = useTemplates()
   const { participants } = useParticipants()

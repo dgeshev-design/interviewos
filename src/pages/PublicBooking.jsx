@@ -18,6 +18,8 @@ export default function PublicBooking() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]       = useState('')
 
+  useEffect(() => { document.title = 'Book a Session | InterviewOS' }, [])
+
   useEffect(() => {
     if (step === 'book' && !calendarDate) {
       const firstSlot = (data?.slots || [])[0]

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStudies } from '@/hooks/useStudies'
 import { useParticipants } from '@/hooks/useParticipants'
@@ -23,6 +23,7 @@ const STATUS_COLORS = {
 }
 
 export default function Studies() {
+  useEffect(() => { document.title = 'Studies | InterviewOS' }, [])
   const { studies, loading, add, update, remove, duplicate } = useStudies()
   const { participants } = useParticipants()
   const { user } = useApp()

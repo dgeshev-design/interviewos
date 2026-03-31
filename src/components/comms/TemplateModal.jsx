@@ -69,38 +69,62 @@ export default function TemplateModal({ open, onClose, onSave, initial }) {
           {/* ── Left: Preview ── */}
           <div className="col-span-2 space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preview</p>
-            <div className="rounded-lg border bg-muted/20 overflow-hidden min-h-[300px]">
+
+            {/* SMS char counter */}
+            {form.channel === 'sms' && (
+              <div className={`flex items-center justify-between text-xs ${form.body.length > 160 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                <span>{form.body.length > 160 ? `⚠ Exceeds 160 chars — will split into ${Math.ceil(form.body.length / 160)} messages` : `${form.body.length} / 160 chars`}</span>
+              </div>
+            )}
+
+            <div className="rounded-lg border bg-muted/20 overflow-hidden" style={{ minHeight: 300 }}>
               {form.channel === 'email' ? (
-                <div className="text-xs">
+                <div className="flex flex-col h-full">
                   {previewSubject && (
-                    <div className="px-4 py-2 border-b bg-muted/40">
+                    <div className="px-4 py-2 border-b bg-muted/40 text-xs shrink-0">
                       <span className="text-muted-foreground">Subject: </span>
                       <span className="font-medium">{previewSubject}</span>
                     </div>
                   )}
-                  <div className="p-4">
-                    {form.is_html ? (
-                      <iframe
-                        srcDoc={previewBody || '<p style="color:#9ca3af;font-size:13px">Preview will appear here…</p>'}
-                        className="w-full border-0"
-                        style={{ minHeight: 260 }}
-                        sandbox="allow-same-origin"
-                        title="Email preview"
-                      />
-                    ) : (
+                  {form.is_html ? (
+                    <iframe
+                      srcDoc={previewBody || '<p style="color:#9ca3af;font-size:13px;padding:16px">Preview will appear here…</p>'}
+                      className="w-full border-0 flex-1"
+                      style={{ height: 420 }}
+                      sandbox="allow-same-origin"
+                      title="Email preview"
+                      onLoad={e => {
+                        try {
+                          const doc = e.target.contentDocument
+                          if (doc) e.target.style.height = doc.documentElement.scrollHeight + 'px'
+                        } catch {}
+                      }}
+                    />
+                  ) : (
+                    <div className="p-4 flex-1">
                       <p className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">
                         {previewBody || <span className="text-muted-foreground">Preview will appear here…</span>}
                       </p>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="p-4 flex items-end">
-                  <div className="max-w-[85%] bg-white border rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm">
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                      {previewBody || <span className="text-muted-foreground">Preview will appear here…</span>}
-                    </p>
-                  </div>
+                <div className="p-4 flex flex-col gap-2 items-start">
+                  {form.channel === 'sms' && previewBody ? (
+                    // Split into 160-char chunks and show each as a separate bubble
+                    previewBody.match(/.{1,160}/gs)?.map((chunk, i) => (
+                      <div key={i} className="max-w-[85%] bg-white border rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm">
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{chunk}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1 text-right">SMS {i + 1}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="max-w-[85%] bg-white border rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm">
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                        {previewBody || <span className="text-muted-foreground">Preview will appear here…</span>}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

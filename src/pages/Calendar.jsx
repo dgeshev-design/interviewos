@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSlots } from '@/hooks/useSlots'
 import { useStudies } from '@/hooks/useStudies'
@@ -25,6 +25,7 @@ const GRID_START = 7
 const fmtDate = (d) => format(d, 'yyyy-MM-dd')
 
 export default function Calendar() {
+  useEffect(() => { document.title = 'Calendar | InterviewOS' }, [])
   const { workspace } = useApp()
   const { slots, loading, removeSlot, removeSlots, refetch: refetchSlots } = useSlots()
   const { rule, saveRule } = useAvailabilityRule()

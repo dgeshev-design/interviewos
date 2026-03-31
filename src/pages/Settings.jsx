@@ -23,6 +23,7 @@ const CHANNEL_COLORS = { email: 'blue', whatsapp: 'success', sms: 'secondary' }
 const ROLE_LABELS = { viewer: 'Can view', editor: 'Can edit' }
 
 export default function Settings() {
+  useEffect(() => { document.title = 'Settings | InterviewOS' }, [])
   const { workspace, ownWorkspace, user, signInWithGoogle } = useApp()
   const { templates, loading: tLoading, add, update, remove } = useTemplates()
   const { toast } = useToast()

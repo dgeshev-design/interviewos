@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '@/context/AppContext'
 import { useStudies } from '@/hooks/useStudies'
@@ -13,6 +14,7 @@ import { formatDateTime } from '@/lib/utils'
 import { Plus, ArrowRight, Video } from 'lucide-react'
 
 export default function Dashboard() {
+  useEffect(() => { document.title = 'Dashboard | InterviewOS' }, [])
   const { user, workspace } = useApp()
   const { studies, loading: sLoading } = useStudies()
   const { participants, loading: pLoading } = useParticipants()

@@ -70,6 +70,8 @@ export default function ParticipantProfile() {
   const [quoteSearch, setQuoteSearch] = useState('')
   const [searchResult, setSearchResult] = useState(null) // null | { found: bool, quotes: string[] }
 
+  useEffect(() => { document.title = participant ? `${participant.name} | InterviewOS` : 'Participant | InterviewOS' }, [participant?.name])
+
   useEffect(() => {
     if (!participant) return
     if (!form) {

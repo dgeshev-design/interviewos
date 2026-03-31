@@ -89,6 +89,7 @@ export default function StudyDetail() {
   const [generatingSynthesis, setGeneratingSynthesis] = useState(false)
   const [synthesisKey, setSynthesisKey]     = useState(0)
   const synthesisTimer = useRef(null)
+  useEffect(() => { document.title = study ? `${study.name} | InterviewOS` : 'Study | InterviewOS' }, [study?.name])
   useEffect(() => { if (study?.synthesis != null) setSynthesis(study.synthesis) }, [study?.id])
   useEffect(() => {
     if (!workspace) return

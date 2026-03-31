@@ -10,6 +10,8 @@ export default function StudyReport() {
   const [openIds, setOpenIds] = useState(new Set())
   const toggle = useCallback((id) => setOpenIds(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n }), [])
 
+  useEffect(() => { document.title = data ? `${data.study.name} — Report | InterviewOS` : 'Report | InterviewOS' }, [data?.study?.name])
+
   useEffect(() => {
     fetch(`/api/public?action=get-report&token=${token}`)
       .then(r => r.json())
