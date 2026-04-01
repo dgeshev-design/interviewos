@@ -73,7 +73,7 @@ export default function SendCommsModal({ open, onClose, participant, templates, 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Send message to {participant?.name}</DialogTitle>
         </DialogHeader>
@@ -99,15 +99,53 @@ export default function SendCommsModal({ open, onClose, participant, templates, 
             </Select>
           </div>
 
-          {selected && (
+            {selected && (
             <div className="space-y-2">
-              {selected.subject && (
-                <div className="text-xs text-muted-foreground">
-                  <span className="font-medium">Subject:</span> {applyTemplateVars(selected.subject, participant, study)}
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Preview</p>
+              {selected.channel === 'sms' && (
+                <div className={`flex items-center justify-between text-xs ${selected.body.length > 160 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  <span>{selected.body.length > 160 ? `⚠ Exceeds 160 chars — ${Math.ceil(selected.body.length / 160)} messages` : `${selected.body.length} / 160 chars`}</span>
                 </div>
               )}
-              <div className="rounded-md border bg-muted/30 p-3 text-sm whitespace-pre-wrap max-h-48 overflow-y-auto">
-                {preview}
+              <div className="rounded-lg border bg-muted/20 overflow-hidden" style={{ minHeight: 120, maxHeight: 400, overflowY: 'auto' }}>
+                {selected.channel === 'email' ? (
+                  <div className="flex flex-col h-full">
+                    {selected.subject && (
+                      <div className="px-4 py-2 border-b bg-muted/40 text-xs shrink-0">
+                        <span className="text-muted-foreground">Subject: </span>
+                        <span className="font-medium">{applyTemplateVars(selected.subject, participant, study)}</span>
+                      </div>
+                    )}
+                    {selected.is_html ? (
+                      <iframe
+                        srcDoc={preview || '<p style="color:#9ca3af;font-size:13px;padding:16px">No content</p>'}
+                        className="w-full border-0"
+                        style={{ height: 360, display: 'block' }}
+                        sandbox="allow-same-origin"
+                        title="Email preview"
+                      />
+                    ) : (
+                      <div className="p-4">
+                        <p className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">{preview}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-4 flex flex-col gap-2 items-start">
+                    {selected.channel === 'sms' && preview ? (
+                      preview.match(/.{1,160}/gs)?.map((chunk, i) => (
+                        <div key={i} className="max-w-[85%] bg-white border rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm">
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{chunk}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1 text-right">SMS {i + 1}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="max-w-[85%] bg-white border rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm">
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{preview}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
