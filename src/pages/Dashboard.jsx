@@ -15,7 +15,7 @@ import { Progress } from '@/components/ui/progress'
 import StatusBadge from '@/components/ui/status-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDateTime } from '@/lib/utils'
-import { Plus, ArrowRight, Video, Users, CalendarDays, Zap, ChevronRight, CheckCircle2, Clock, UserX } from 'lucide-react'
+import { Plus, ArrowRight, Video, Users, CalendarDays, CheckCircle2, Clock, UserX } from 'lucide-react'
 
 const PRIMARY = 'oklch(0.795 0.162 86)'
 const PRIMARY_LIGHT = 'oklch(0.795 0.162 86 / 0.15)'
@@ -128,10 +128,10 @@ export default function Dashboard() {
       </div>
 
       {/* ── Charts row ── */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-4">
 
         {/* Donut — pipeline */}
-        <Card className="col-span-2 shadow-none">
+        <Card className="col-span-1 shadow-none">
           <CardHeader className="pb-1">
             <CardTitle className="text-sm font-semibold">Participant pipeline</CardTitle>
           </CardHeader>
@@ -174,7 +174,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Area — weekly signups */}
-        <Card className="col-span-2 shadow-none">
+        <Card className="col-span-1 shadow-none">
           <CardHeader className="pb-1">
             <CardTitle className="text-sm font-semibold">Weekly signups</CardTitle>
           </CardHeader>
@@ -199,28 +199,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Quick actions */}
-        <Card className="col-span-1 shadow-none">
-          <CardHeader className="pb-1">
-            <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-              <Zap className="h-3.5 w-3.5 text-primary" /> Quick actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-1 space-y-1">
-            {[
-              { label: 'New study',        icon: Plus,         action: () => navigate('/studies') },
-              { label: 'Calendar',         icon: CalendarDays, action: () => navigate('/calendar') },
-              { label: 'All participants', icon: Users,        action: () => navigate('/studies') },
-            ].map(a => (
-              <button key={a.label} onClick={a.action}
-                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-sm hover:bg-muted transition-colors text-left group">
-                <a.icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                <span className="flex-1">{a.label}</span>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
-            ))}
-          </CardContent>
-        </Card>
       </div>
 
       {/* ── Bottom row ── */}
