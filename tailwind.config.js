@@ -74,8 +74,8 @@ export default {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		fontFamily: {
-  			sans: ['Lato', 'system-ui', 'sans-serif'],
-  			heading: ['Space Grotesk', 'sans-serif'],
+  			sans: ['Inter', 'system-ui', 'sans-serif'],
+  			heading: ['DM Serif Text', 'serif'],
   			mono: ['ui-monospace', 'monospace'],
   		},
   		keyframes: {

@@ -37,6 +37,7 @@ export default function PublicBooking() {
           primaryColor: e.data.primaryColor ?? null,
           bannerUrl: e.data.bannerUrl,
           logoUrl: e.data.logoUrl,
+          borderRadius: e.data.borderRadius ?? null,
         })
       }
     }
@@ -77,6 +78,8 @@ export default function PublicBooking() {
   const brandColor    = previewOverride.primaryColor ?? activeForm?.primary_color ?? '#6366f1'
   const bannerUrl     = 'bannerUrl' in previewOverride ? previewOverride.bannerUrl : (activeForm?.banner_url ?? null)
   const logoUrl       = 'logoUrl' in previewOverride ? previewOverride.logoUrl : (activeForm?.logo_url ?? null)
+  const formRadius    = previewOverride.borderRadius ?? activeForm?.border_radius ?? 8
+  const r             = formRadius === 999 ? 9999 : formRadius
 
   const stepCount        = fields.length ? Math.max(...fields.map(f => f.step || 1)) : 1
   const stepTitles       = activeForm?.step_titles || []
@@ -139,17 +142,17 @@ export default function PublicBooking() {
     logoWrap: { marginBottom: 24, display: 'flex', justifyContent: 'center', alignItems: 'center' },
     logoText: { fontSize: 18, fontWeight: 700, color: '#111827' },
     accent:   { color: brandColor },
-    card:     { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
+    card:     { background: '#fff', border: '1px solid #e5e7eb', borderRadius: Math.min(r, 20), overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
     cardBody: { padding: 'clamp(16px, 6vw, 32px)' },
     banner:   { width: '100%', height: 'clamp(80px, 20vw, 140px)', objectFit: 'cover', display: 'block' },
     h2:       { fontSize: 'clamp(15px, 4vw, 18px)', fontWeight: 600, color: '#111827', marginBottom: 4 },
     sub:      { fontSize: 13.5, color: '#6b7280', marginBottom: 24, lineHeight: 1.6 },
     label:    { display: 'block', fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 },
-    input:    { width: '100%', border: '1px solid #d1d5db', borderRadius: 8, color: '#111827', fontSize: 13.5, padding: '9px 12px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' },
-    btn:      { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '11px 16px', borderRadius: 8, background: brandColor, color: '#fff', fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer', marginTop: 20 },
-    btnOut:   { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '11px 20px', borderRadius: 8, background: 'transparent', border: '1px solid #d1d5db', color: '#6b7280', fontSize: 14, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' },
-    err:      { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', color: '#dc2626', fontSize: 13, marginTop: 12 },
-    slot:     (sel) => ({ border: `1px solid ${sel ? brandColor : '#e5e7eb'}`, background: sel ? `${brandColor}18` : '#fff', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', marginBottom: 8, transition: '0.15s' }),
+    input:    { width: '100%', border: '1px solid #d1d5db', borderRadius: r, color: '#111827', fontSize: 13.5, padding: '9px 12px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' },
+    btn:      { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '11px 16px', borderRadius: r, background: brandColor, color: '#fff', fontSize: 14, fontWeight: 500, border: 'none', cursor: 'pointer', marginTop: 20 },
+    btnOut:   { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '11px 20px', borderRadius: r, background: 'transparent', border: '1px solid #d1d5db', color: '#6b7280', fontSize: 14, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' },
+    err:      { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: r, padding: '10px 14px', color: '#dc2626', fontSize: 13, marginTop: 12 },
+    slot:     (sel) => ({ border: `1px solid ${sel ? brandColor : '#e5e7eb'}`, background: sel ? `${brandColor}18` : '#fff', borderRadius: r, padding: '12px 16px', cursor: 'pointer', marginBottom: 8, transition: '0.15s' }),
     fieldWrap:{ marginBottom: 16 },
   }
 

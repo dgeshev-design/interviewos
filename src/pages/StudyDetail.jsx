@@ -195,8 +195,9 @@ export default function StudyDetail() {
       primaryColor: form.primary_color,
       bannerUrl: form.banner_url ?? null,
       logoUrl: form.logo_url ?? null,
+      borderRadius: form.border_radius ?? 8,
     }, '*')
-  }, [form?.primary_color, form?.banner_url, form?.logo_url])
+  }, [form?.primary_color, form?.banner_url, form?.logo_url, form?.border_radius])
 
   // ── Load / create form ───────────────────────────────────────────────────
   const loadForm = useCallback(async () => {
@@ -621,7 +622,7 @@ export default function StudyDetail() {
                   <TabsTrigger value="fields" className="flex-1">Fields</TabsTrigger>
                 </TabsList>
 
-                <div className="rounded-xl border bg-card max-h-[calc(100vh-220px)] overflow-y-auto">
+                <div className="rounded-lg border bg-card max-h-[calc(100vh-220px)] overflow-y-auto">
 
                 {/* Branding */}
                 <TabsContent value="branding" className="mt-0 p-4 space-y-5 pb-8">
@@ -689,7 +690,7 @@ export default function StudyDetail() {
                         type="color"
                         value={form.primary_color || '#6366f1'}
                         onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))}
-                        className="h-9 w-16 rounded border cursor-pointer p-0.5"
+                        className="h-10 w-16 rounded border cursor-pointer p-0.5"
                       />
                       <Input
                         value={form.primary_color || '#6366f1'}
@@ -698,6 +699,27 @@ export default function StudyDetail() {
                         maxLength={7}
                       />
                       <Button size="sm" onClick={() => saveForm({ primary_color: form.primary_color })} disabled={savingForm}>Save</Button>
+                    </div>
+                  </div>
+                  {/* Border radius */}
+                  <div className="space-y-2">
+                    <Label>Corner rounding</Label>
+                    <div className="flex items-center gap-2">
+                      {[{ label: 'None', value: 0 }, { label: 'Sm', value: 4 }, { label: 'Md', value: 8 }, { label: 'Lg', value: 12 }, { label: 'Pill', value: 999 }].map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => saveForm({ border_radius: opt.value })}
+                          className={cn(
+                            'px-3 py-1.5 text-xs border transition-colors',
+                            opt.value === 999 ? 'rounded-full' : opt.value === 0 ? 'rounded-none' : `rounded-md`,
+                            (form.border_radius ?? 8) === opt.value
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background hover:bg-muted border-input'
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </TabsContent>
@@ -727,7 +749,7 @@ export default function StudyDetail() {
                         <div className="flex items-center gap-2">
                           <Input
                             type="number" min="1" max="365"
-                            className="w-20 h-9 text-sm"
+                            className="w-20 text-sm"
                             value={bookingConfig.days_ahead || 30}
                             onChange={e => setBookingConfig(c => ({ ...c, days_ahead: parseInt(e.target.value) || 30 }))}
                           />
@@ -751,10 +773,10 @@ export default function StudyDetail() {
                   <div className="space-y-1.5">
                     <Label className="text-xs">Hour visibility override <span className="text-muted-foreground font-normal">(optional)</span></Label>
                     <div className="flex items-center gap-2">
-                      <Input type="time" className="w-32 h-9 text-sm" value={bookingConfig.hour_from || ''} placeholder="09:00"
+                      <Input type="time" className="w-32 text-sm" value={bookingConfig.hour_from || ''} placeholder="09:00"
                         onChange={e => setBookingConfig(c => ({ ...c, hour_from: e.target.value }))} />
                       <span className="text-sm text-muted-foreground">to</span>
-                      <Input type="time" className="w-32 h-9 text-sm" value={bookingConfig.hour_to || ''} placeholder="17:00"
+                      <Input type="time" className="w-32 text-sm" value={bookingConfig.hour_to || ''} placeholder="17:00"
                         onChange={e => setBookingConfig(c => ({ ...c, hour_to: e.target.value }))} />
                     </div>
                   </div>
@@ -938,7 +960,7 @@ export default function StudyDetail() {
               )}
               <div className={cn('transition-all duration-200', previewMode === 'mobile' ? 'flex justify-center' : '')}>
                 <div className={cn(
-                  'rounded-xl border overflow-hidden shadow-sm',
+                  'rounded-lg border overflow-hidden shadow-sm',
                   previewMode === 'mobile' ? 'w-[390px]' : 'w-full'
                 )}>
                   {previewMode === 'mobile' && (
