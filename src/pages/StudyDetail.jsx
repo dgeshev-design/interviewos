@@ -195,9 +195,9 @@ export default function StudyDetail() {
       primaryColor: form.primary_color,
       bannerUrl: form.banner_url ?? null,
       logoUrl: form.logo_url ?? null,
-      borderRadius: form.border_radius ?? 8,
+      borderRadius: form.booking_config?.border_radius ?? 8,
     }, '*')
-  }, [form?.primary_color, form?.banner_url, form?.logo_url, form?.border_radius])
+  }, [form?.primary_color, form?.banner_url, form?.logo_url, form?.booking_config?.border_radius])
 
   // ── Load / create form ───────────────────────────────────────────────────
   const loadForm = useCallback(async () => {
@@ -452,10 +452,10 @@ export default function StudyDetail() {
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search participants…" value={search} onChange={e => setSearch(e.target.value)} className="pl-8" />
             </div>
-            <div className="flex rounded-md border overflow-hidden text-xs">
+            <div className="flex rounded-md border overflow-hidden text-sm">
               {['all','booked','completed','no-show','prize-granted'].map(f => (
                 <button key={f} onClick={() => setFilter(f)}
-                  className={cn('px-3 py-1.5 capitalize', filter === f ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
+                  className={cn('h-10 px-3 capitalize', filter === f ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
                   {f === 'all' ? 'All' : f.replace('-',' ')}
                 </button>
               ))}
@@ -708,11 +708,11 @@ export default function StudyDetail() {
                       {[{ label: 'None', value: 0 }, { label: 'Sm', value: 4 }, { label: 'Md', value: 8 }, { label: 'Lg', value: 12 }, { label: 'Pill', value: 999 }].map(opt => (
                         <button
                           key={opt.value}
-                          onClick={() => saveForm({ border_radius: opt.value })}
+                          onClick={() => { const next = { ...bookingConfig, border_radius: opt.value }; setBookingConfig(next); saveForm({ booking_config: next }) }}
                           className={cn(
                             'px-3 py-1.5 text-xs border transition-colors',
-                            opt.value === 999 ? 'rounded-full' : opt.value === 0 ? 'rounded-none' : `rounded-md`,
-                            (form.border_radius ?? 8) === opt.value
+                            opt.value === 999 ? 'rounded-full' : opt.value === 0 ? 'rounded-none' : 'rounded-md',
+                            (bookingConfig.border_radius ?? 8) === opt.value
                               ? 'bg-primary text-primary-foreground border-primary'
                               : 'bg-background hover:bg-muted border-input'
                           )}
@@ -911,24 +911,24 @@ export default function StudyDetail() {
                   <div className="flex rounded-md border overflow-hidden">
                     <button
                       onClick={() => setPreviewMode('desktop')}
-                      className={cn('px-2.5 py-1.5 transition-colors', previewMode === 'desktop' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                      className={cn('h-10 px-2.5 transition-colors', previewMode === 'desktop' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
                       title="Desktop"
                     >
-                      <Monitor className="h-3.5 w-3.5" />
+                      <Monitor className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setPreviewMode('mobile')}
-                      className={cn('px-2.5 py-1.5 transition-colors', previewMode === 'mobile' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
+                      className={cn('h-10 px-2.5 transition-colors', previewMode === 'mobile' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}
                       title="Mobile"
                     >
-                      <Smartphone className="h-3.5 w-3.5" />
+                      <Smartphone className="h-4 w-4" />
                     </button>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Refresh preview" onClick={() => setIframeKey(k => k + 1)}>
-                    <RotateCcw className="h-3.5 w-3.5" />
+                  <Button variant="ghost" size="icon" title="Refresh preview" onClick={() => setIframeKey(k => k + 1)}>
+                    <RotateCcw className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => window.open(publicUrl, '_blank')}>
-                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Open
+                  <Button variant="outline" onClick={() => window.open(publicUrl, '_blank')}>
+                    <ExternalLink className="h-4 w-4 mr-1.5" /> Open
                   </Button>
                 </div>
               </div>

@@ -668,8 +668,8 @@ export default function ParticipantProfile() {
                       onKeyDown={e => { if (e.key === 'Enter' && quoteSearch.trim()) searchTranscript() }}
                       className="text-sm"
                     />
-                    <Button size="sm" variant="outline" className="shrink-0 gap-1" onClick={searchTranscript} disabled={!quoteSearch.trim() || aiLoading === 'search'}>
-                      <Sparkles className="h-3 w-3" />
+                    <Button variant="outline" className="shrink-0 gap-1.5" onClick={searchTranscript} disabled={!quoteSearch.trim() || aiLoading === 'search'}>
+                      <Sparkles className="h-4 w-4" />
                       {aiLoading === 'search' ? 'Searching…' : 'Search'}
                     </Button>
                   </div>

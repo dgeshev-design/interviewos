@@ -295,8 +295,8 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Google Calendar integration */}
-          <Card className="shadow-none">
+          {/* Google Calendar integration — only workspace owner can connect */}
+          {isOwner && <Card className="shadow-none">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -351,7 +351,7 @@ export default function Settings() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
         </TabsContent>
 
@@ -407,7 +407,7 @@ export default function Settings() {
                 className="flex-1"
               />
               <Select value={inviteRole} onValueChange={setInviteRole}>
-                <SelectTrigger className="h-9 w-[110px] text-sm">
+                <SelectTrigger className="w-[110px] text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -416,7 +416,7 @@ export default function Settings() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button size="sm" onClick={handleInvite} disabled={inviting || !inviteEmail.trim()}>
+              <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()}>
                 {inviting ? 'Inviting…' : <><Plus className="h-3.5 w-3.5 mr-1.5" /> Invite</>}
               </Button>
             </div>

@@ -142,20 +142,20 @@ export default function Calendar() {
         description="Manage your availability and upcoming sessions"
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
-              <RefreshCw className={cn('h-3.5 w-3.5 mr-1.5', syncing && 'animate-spin')} />
+            <Button variant="outline" onClick={handleSync} disabled={syncing}>
+              <RefreshCw className={cn('h-4 w-4 mr-1.5', syncing && 'animate-spin')} />
               {syncing ? 'Syncing…' : 'Sync Google Cal'}
             </Button>
-            <Button size="sm" onClick={openModal}>
-              <CalendarPlus className="h-3.5 w-3.5 mr-1.5" />
+            <Button onClick={openModal}>
+              <CalendarPlus className="h-4 w-4 mr-1.5" />
               {rule ? 'Edit availability' : 'Set availability'}
             </Button>
-            <div className="flex rounded-md border overflow-hidden text-xs">
-              <button onClick={() => setView('week')} className={cn('px-3 py-1.5 flex items-center gap-1.5 transition-colors', view === 'week' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
-                <LayoutGrid className="h-3.5 w-3.5" /> Week
+            <div className="flex rounded-md border overflow-hidden text-sm">
+              <button onClick={() => setView('week')} className={cn('h-10 px-3 flex items-center gap-1.5 transition-colors', view === 'week' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
+                <LayoutGrid className="h-4 w-4" /> Week
               </button>
-              <button onClick={() => setView('list')} className={cn('px-3 py-1.5 flex items-center gap-1.5 transition-colors', view === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
-                <List className="h-3.5 w-3.5" /> List
+              <button onClick={() => setView('list')} className={cn('h-10 px-3 flex items-center gap-1.5 transition-colors', view === 'list' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted')}>
+                <List className="h-4 w-4" /> List
               </button>
             </div>
           </div>

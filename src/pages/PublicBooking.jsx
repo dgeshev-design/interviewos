@@ -78,7 +78,7 @@ export default function PublicBooking() {
   const brandColor    = previewOverride.primaryColor ?? activeForm?.primary_color ?? '#6366f1'
   const bannerUrl     = 'bannerUrl' in previewOverride ? previewOverride.bannerUrl : (activeForm?.banner_url ?? null)
   const logoUrl       = 'logoUrl' in previewOverride ? previewOverride.logoUrl : (activeForm?.logo_url ?? null)
-  const formRadius    = previewOverride.borderRadius ?? activeForm?.border_radius ?? 8
+  const formRadius    = previewOverride.borderRadius ?? activeForm?.booking_config?.border_radius ?? 8
   const r             = formRadius === 999 ? 9999 : formRadius
 
   const stepCount        = fields.length ? Math.max(...fields.map(f => f.step || 1)) : 1
