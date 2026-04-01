@@ -16,9 +16,7 @@ export default function Login() {
 
         {/* Mark */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center shadow-md">
-            <span className="text-primary-foreground font-heading font-semibold text-lg">B</span>
-          </div>
+          <img src="/betty_logo.png" alt="Betty" className="h-12" />
           <div>
             <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground leading-tight">
               Welcome back
