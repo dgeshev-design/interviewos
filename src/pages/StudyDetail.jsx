@@ -646,11 +646,11 @@ export default function StudyDetail() {
                         onChange={e => setForm(f => ({ ...f, banner_url: e.target.value }))}
                         className="flex-1"
                       />
-                      <Button variant="outline" size="sm" onClick={() => bannerRef.current?.click()} disabled={uploadingBanner}>
-                        <Upload className="h-3.5 w-3.5 mr-1.5" />
+                      <Button variant="outline" onClick={() => bannerRef.current?.click()} disabled={uploadingBanner}>
+                        <Upload className="h-4 w-4 mr-1.5" />
                         {uploadingBanner ? 'Uploading…' : 'Upload'}
                       </Button>
-                      <Button size="sm" onClick={() => saveForm({ banner_url: form.banner_url })} disabled={savingForm}>Save</Button>
+                      <Button onClick={() => saveForm({ banner_url: form.banner_url })} disabled={savingForm}>Save</Button>
                     </div>
                     <input ref={bannerRef} type="file" accept="image/*" className="hidden"
                       onChange={e => { if (e.target.files[0]) uploadImage(e.target.files[0], 'banner_url') }} />
@@ -673,11 +673,11 @@ export default function StudyDetail() {
                         onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))}
                         className="flex-1"
                       />
-                      <Button variant="outline" size="sm" onClick={() => logoRef.current?.click()} disabled={uploadingLogo}>
-                        <Upload className="h-3.5 w-3.5 mr-1.5" />
+                      <Button variant="outline" onClick={() => logoRef.current?.click()} disabled={uploadingLogo}>
+                        <Upload className="h-4 w-4 mr-1.5" />
                         {uploadingLogo ? 'Uploading…' : 'Upload'}
                       </Button>
-                      <Button size="sm" onClick={() => saveForm({ logo_url: form.logo_url })} disabled={savingForm}>Save</Button>
+                      <Button onClick={() => saveForm({ logo_url: form.logo_url })} disabled={savingForm}>Save</Button>
                     </div>
                     <input ref={logoRef} type="file" accept="image/*" className="hidden"
                       onChange={e => { if (e.target.files[0]) uploadImage(e.target.files[0], 'logo_url') }} />
@@ -698,7 +698,7 @@ export default function StudyDetail() {
                         className="w-28 font-mono text-sm"
                         maxLength={7}
                       />
-                      <Button size="sm" onClick={() => saveForm({ primary_color: form.primary_color })} disabled={savingForm}>Save</Button>
+                      <Button onClick={() => saveForm({ primary_color: form.primary_color })} disabled={savingForm}>Save</Button>
                     </div>
                   </div>
                   {/* Border radius */}

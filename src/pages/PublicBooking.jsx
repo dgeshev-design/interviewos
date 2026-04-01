@@ -507,12 +507,12 @@ export default function PublicBooking() {
                           borderLeft: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
                           borderBottom: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
                           borderRight: '1px solid #e5e7eb',
-                          borderTopLeftRadius: 8, borderBottomLeftRadius: 8,
+                          borderTopLeftRadius: r, borderBottomLeftRadius: r,
                         }}>
                           {lockedEntry?.flag} {lockedEntry?.dialCode}
                         </span>
                       ) : (
-                        <PhoneCountryPicker value={activeISO} onChange={iso => setPhone(iso, storedNum)} inForm borderColor={valid === false ? '#fca5a5' : '#d1d5db'} />
+                        <PhoneCountryPicker value={activeISO} onChange={iso => setPhone(iso, storedNum)} inForm borderColor={valid === false ? '#fca5a5' : '#d1d5db'} borderRadius={r} />
                       )}
                       <input
                         type="tel"
@@ -526,7 +526,7 @@ export default function PublicBooking() {
                           borderRight: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
                           borderBottom: `1px solid ${valid === false ? '#fca5a5' : '#d1d5db'}`,
                           borderLeft: 'none',
-                          borderTopRightRadius: 8, borderBottomRightRadius: 8,
+                          borderTopRightRadius: r, borderBottomRightRadius: r,
                         }}
                         value={storedNum}
                         onChange={e => setPhone(activeISO, e.target.value.replace(/[^\d\s\-\+\(\)]/g, ''))}
