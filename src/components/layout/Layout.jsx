@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { AppSidebar } from './Sidebar'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
@@ -11,6 +12,8 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { useApp } from '@/context/AppContext'
+import { Sun, Moon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 function AppBreadcrumb() {
   const { pathname } = useLocation()
@@ -58,6 +61,17 @@ function AppBreadcrumb() {
 }
 
 export default function Layout({ children }) {
+  const [dark, setDark] = useState(() => {
+    const stored = localStorage.getItem('theme')
+    if (stored) return stored === 'dark'
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
+  }, [dark])
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -66,6 +80,11 @@ export default function Layout({ children }) {
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-4" />
           <AppBreadcrumb />
+          <div className="ml-auto">
+            <Button variant="ghost" size="icon" onClick={() => setDark(d => !d)} aria-label="Toggle dark mode">
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+          </div>
         </header>
         <main className="flex-1 min-h-screen bg-gray-50/40">
           <div className="max-w-6xl mx-auto">
