@@ -18,7 +18,7 @@ export default function Login() {
         <div className="mb-8 flex flex-col items-center gap-3">
           <img src="/betty_logo.png" alt="Betty" className="h-12" />
           <div>
-            <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground leading-tight">
+            <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground leading-tight">
               Welcome back
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5">

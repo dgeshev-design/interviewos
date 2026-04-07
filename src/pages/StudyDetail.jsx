@@ -169,13 +169,13 @@ export default function StudyDetail() {
   const [activeStep, setActiveStep] = useState(1)
   const [uploadingBanner, setUploadingBanner] = useState(false)
   const [uploadingLogo, setUploadingLogo]     = useState(false)
-  const bannerRef = useRef()
-  const logoRef   = useRef()
+  const bannerRef = useRef(null)
+  const logoRef   = useRef(null)
   const [bookingConfig, setBookingConfig] = useState(form?.booking_config || {})
   const [formTab, setFormTab]       = useState('branding')
   const [previewMode, setPreviewMode] = useState('desktop')
   const [iframeKey, setIframeKey]   = useState(0)
-  const previewIframeRef = useRef()
+  const previewIframeRef = useRef(null)
   const [previewNavStep, setPreviewNavStep] = useState(1) // number | 'book' | 'done'
 
   // Send step to preview iframe via postMessage (no reload needed)
@@ -522,7 +522,7 @@ export default function StudyDetail() {
                           {p.rating ? (
                             <div className="flex items-center gap-0.5">
                               {Array.from({length:5}).map((_,i) => (
-                                <Star key={i} className={cn('h-3 w-3', i < p.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200')} />
+                                <Star key={i} className={cn('h-3 w-3', i < p.rating ? 'fill-amber-400 text-amber-400' : 'text-border')} />
                               ))}
                             </div>
                           ) : <span className="text-muted-foreground">—</span>}

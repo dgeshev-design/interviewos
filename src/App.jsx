@@ -22,7 +22,7 @@ const PUBLIC_PATHS = ['/s/', '/report/', '/login']
 function AuthGuard({ children }) {
   const { user, loading } = useApp()
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground bg-background">
       Loading…
     </div>
   )

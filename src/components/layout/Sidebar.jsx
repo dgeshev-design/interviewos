@@ -45,8 +45,8 @@ export function AppSidebar() {
     <Sidebar>
       {/* Logo */}
       <SidebarHeader className="h-14 flex justify-center px-5 border-b">
-        <span className="font-semibold text-[15px] tracking-tight">
-          Interview<span className="text-brand-500">OS</span>
+        <span className="font-semibold text-base tracking-tight">
+          Interview<span className="text-primary">OS</span>
         </span>
       </SidebarHeader>
 

@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import PageHeader from '@/components/layout/PageHeader'
 import { useToast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
+import { cn, STATUS_CONFIG } from '@/lib/utils'
+import StatusBadge from '@/components/ui/status-badge'
 import { addDays, addMonths, startOfWeek, endOfMonth, startOfMonth, format, isSameDay, parseISO, isToday } from 'date-fns'
 import { ChevronLeft, ChevronRight, RefreshCw, CalendarPlus, List, LayoutGrid } from 'lucide-react'
 
@@ -257,7 +258,7 @@ export default function Calendar() {
                               className={cn(
                                 'rounded px-1.5 overflow-hidden text-xs flex flex-col justify-start pt-0.5',
                                 slot.is_gcal_block
-                                  ? 'bg-gray-100 text-gray-500 cursor-default border border-gray-200'
+                                  ? 'bg-stone-100 text-stone-500 cursor-default border border-stone-200'
                                   : 'bg-brand-100 text-brand-700 hover:bg-brand-200 cursor-pointer border border-brand-200'
                               )}
                             >
@@ -286,7 +287,7 @@ export default function Calendar() {
           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-green-50 border border-green-100" /> Available window</span>
             <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-brand-100 border border-brand-200" /> Booked</span>
-            <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-gray-100 border border-gray-200" /> Busy (Google Cal)</span>
+            <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-stone-100 border border-stone-200" /> Busy (Google Cal)</span>
           </div>
         </>
       )}
@@ -358,7 +359,7 @@ export default function Calendar() {
                           <td className="p-4 text-muted-foreground">{s.duration_minutes} min</td>
                           <td className="p-4">
                             {s.is_gcal_block
-                              ? <span className="text-xs text-gray-400 italic">Google Calendar</span>
+                              ? <span className="text-xs text-muted-foreground italic">Google Calendar</span>
                               : s.participant_id
                               ? <button className="text-brand-600 hover:underline font-medium" onClick={() => navigate(`/studies/${s.study_id}/participants/${s.participant_id}`)}>
                                   {s.participants?.name || 'Unknown'}
@@ -367,12 +368,10 @@ export default function Calendar() {
                           </td>
                           <td className="p-4">
                             {s.is_gcal_block ? (
-                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border bg-gray-100 text-gray-500 border-gray-200">Busy</span>
-                            ) : (() => {
-                              const st = s.participants?.status || 'booked'
-                              const cls = { booked: 'bg-blue-100 text-blue-700 border-blue-200', completed: 'bg-green-100 text-green-700 border-green-200', 'prize-granted': 'bg-purple-100 text-purple-700 border-purple-200', 'no-show': 'bg-amber-100 text-amber-700 border-amber-200', cancelled: 'bg-red-100 text-red-700 border-red-200', disqualified: 'bg-gray-100 text-gray-500 border-gray-200' }[st] || 'bg-blue-100 text-blue-700 border-blue-200'
-                              return <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', cls)}>{st}</span>
-                            })()}
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border bg-stone-100 text-stone-500 border-stone-200">Busy</span>
+                            ) : (
+                              <StatusBadge status={s.participants?.status || 'booked'} />
+                            )}
                           </td>
                           <td className="p-4">
                             {canSelect && (

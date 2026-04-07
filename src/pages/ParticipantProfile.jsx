@@ -371,7 +371,7 @@ export default function ParticipantProfile() {
           </div>
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-semibold">{form.name}</h1>
+              <h1 className="text-xl font-bold tracking-tight font-heading">{form.name}</h1>
               <StatusBadge status={form.status} />
             </div>
             <div className="text-sm text-muted-foreground mt-0.5">
@@ -547,7 +547,7 @@ export default function ParticipantProfile() {
                   <div className="flex gap-1">
                     {[1,2,3,4,5].map(r => (
                       <button key={r} type="button" onClick={() => editing && setRating(r)} className={cn(!editing && 'cursor-default')}>
-                        <Star className={cn('h-5 w-5', r <= (form.rating||0) ? 'fill-amber-400 text-amber-400' : 'text-gray-200 hover:text-amber-300')} />
+                        <Star className={cn('h-5 w-5', r <= (form.rating||0) ? 'fill-amber-400 text-amber-400' : 'text-border hover:text-amber-300')} />
                       </button>
                     ))}
                   </div>

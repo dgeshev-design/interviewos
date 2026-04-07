@@ -32,7 +32,7 @@ export default function InterviewGuide() {
   const [briefFile, setBriefFile]     = useState(null)
   const [briefLoading, setBriefLoading] = useState(false)
   const [generatedQs, setGeneratedQs] = useState([])
-  const fileRef = useRef()
+  const fileRef = useRef(null)
 
   const participant = participants.find(p => p.id === selectedPid)
 

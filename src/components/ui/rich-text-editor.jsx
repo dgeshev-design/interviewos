@@ -44,7 +44,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Start t
   return (
     <div className={cn('border rounded-md overflow-hidden', className)}>
       {/* Toolbar */}
-      <div className="flex items-center gap-0.5 p-1.5 border-b bg-gray-50/50">
+      <div className="flex items-center gap-0.5 p-1.5 border-b bg-muted/40">
         {tools.map(({ icon: Icon, cmd, val, title }) => (
           <button
             key={title}

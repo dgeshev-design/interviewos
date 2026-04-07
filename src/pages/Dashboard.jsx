@@ -85,19 +85,19 @@ export default function Dashboard() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   const nudge = todayCount > 0
-    ? `${todayCount} session${todayCount > 1 ? 's' : ''} today`
+    ? `${todayCount} session${todayCount > 1 ? 's' : ''} on your calendar today`
     : booked > 0
     ? `${booked} participant${booked > 1 ? 's' : ''} waiting to be scheduled`
-    : studies.length > 0 ? 'All caught up — no sessions today'
-    : 'Get started by creating your first study'
+    : studies.length > 0 ? 'All clear — nothing scheduled today'
+    : 'Ready when you are — create your first study'
 
   return (
     <div className="p-8 space-y-5">
 
       {/* ── Header ── */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between animate-fade-up" style={{ animationDelay: '0ms' }}>
         <div>
-          <h1 className="text-2xl font-heading font-semibold text-foreground">{greeting}, {name}</h1>
+          <h1 className="text-2xl font-heading font-bold tracking-tight text-foreground">{greeting}, {name}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{workspace?.name} · {nudge}</p>
         </div>
         <Button onClick={() => navigate('/studies')}>
@@ -109,11 +109,11 @@ export default function Dashboard() {
       <div className="grid grid-cols-4 gap-4">
         {[
           { label: 'Total participants', value: total,     bg: 'bg-background',  border: 'border', text: 'text-foreground',  icon: Users,        iconColor: 'text-muted-foreground' },
-          { label: 'Completed',          value: completed, bg: 'bg-green-50',    border: 'border-green-100', text: 'text-green-700',  icon: CheckCircle2, iconColor: 'text-green-500' },
-          { label: 'Booked',             value: booked,    bg: 'bg-blue-50',     border: 'border-blue-100',  text: 'text-blue-700',   icon: Clock,        iconColor: 'text-blue-500' },
-          { label: 'No-shows',           value: noShow,    bg: 'bg-red-50',      border: 'border-red-100',   text: 'text-red-600',    icon: UserX,        iconColor: 'text-red-400' },
-        ].map(s => (
-          <Card key={s.label} className={`shadow-none ${s.bg} ${s.border}`}>
+          { label: 'Completed',          value: completed, bg: 'bg-emerald-50',  border: 'border-emerald-100', text: 'text-emerald-700', icon: CheckCircle2, iconColor: 'text-emerald-500' },
+          { label: 'Booked',             value: booked,    bg: 'bg-sky-50',      border: 'border-sky-100',     text: 'text-sky-700',    icon: Clock,        iconColor: 'text-sky-500' },
+          { label: 'No-shows',           value: noShow,    bg: 'bg-rose-50',     border: 'border-rose-100',    text: 'text-rose-600',   icon: UserX,        iconColor: 'text-rose-400' },
+        ].map((s, i) => (
+          <Card key={s.label} className={`shadow-none animate-fade-up ${s.bg} ${s.border}`} style={{ animationDelay: `${80 + i * 70}ms` }}>
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs text-muted-foreground">{s.label}</span>
@@ -128,12 +128,12 @@ export default function Dashboard() {
       </div>
 
       {/* ── Charts row ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 animate-fade-up" style={{ animationDelay: '380ms' }}>
 
         {/* Donut — pipeline */}
         <Card className="col-span-1 shadow-none">
           <CardHeader className="pb-1">
-            <CardTitle className="text-sm font-semibold">Participant pipeline</CardTitle>
+            <CardTitle>Participant pipeline</CardTitle>
           </CardHeader>
           <CardContent>
             {pLoading ? <Skeleton className="h-44 w-full" /> : total === 0 ? (
@@ -176,7 +176,7 @@ export default function Dashboard() {
         {/* Area — weekly signups */}
         <Card className="col-span-1 shadow-none">
           <CardHeader className="pb-1">
-            <CardTitle className="text-sm font-semibold">Weekly signups</CardTitle>
+            <CardTitle>Weekly signups</CardTitle>
           </CardHeader>
           <CardContent>
             {pLoading ? <Skeleton className="h-44 w-full" /> : (
@@ -202,13 +202,13 @@ export default function Dashboard() {
       </div>
 
       {/* ── Bottom row ── */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-5 gap-4 animate-fade-up" style={{ animationDelay: '520ms' }}>
 
         {/* Upcoming sessions + day strip */}
         <Card className="col-span-3 shadow-none">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold">Upcoming sessions</CardTitle>
+              <CardTitle>Upcoming sessions</CardTitle>
               <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => navigate('/calendar')}>
                 Calendar <ArrowRight className="h-3 w-3" />
               </Button>
@@ -224,7 +224,7 @@ export default function Dashboard() {
                 )
                 const today_ = i === 0
                 return (
-                  <div key={i} className={`flex-1 flex flex-col items-center py-2.5 rounded-lg transition-colors ${today_ ? 'bg-primary text-primary-foreground' : 'bg-muted/40 hover:bg-muted'}`}>
+                  <div key={i} className={`flex-1 flex flex-col items-center py-2.5 rounded-lg transition-all duration-200 ${today_ ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted/40 hover:bg-muted hover:-translate-y-px'}`}>
                     <span className={`text-[10px] font-medium uppercase tracking-wide ${today_ ? 'opacity-75' : 'text-muted-foreground'}`}>{format(day, 'EEE')}</span>
                     <span className={`text-base font-bold mt-0.5 ${today_ ? '' : 'text-foreground'}`}>{format(day, 'd')}</span>
                     <span className={`mt-1.5 text-[10px] font-semibold min-w-[16px] text-center ${daySlots.length > 0 ? (today_ ? 'opacity-90' : 'text-primary') : 'opacity-0'}`}>
@@ -238,14 +238,14 @@ export default function Dashboard() {
             {/* Session list */}
             {upcoming.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 gap-3">
-                <CalendarDays className="h-8 w-8 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">No upcoming sessions scheduled</p>
+                <CalendarDays className="h-8 w-8 text-muted-foreground/30 animate-float" />
+                <p className="text-sm text-muted-foreground">Your schedule is clear — enjoy the calm</p>
                 <Button variant="outline" size="sm" onClick={() => navigate('/calendar')}>Set availability</Button>
               </div>
             ) : (
               <div className="space-y-px">
                 {upcoming.map(slot => (
-                  <div key={slot.id} className="flex items-center justify-between py-2.5 border-b last:border-0">
+                  <div key={slot.id} className="flex items-center justify-between py-2.5 border-b last:border-0 rounded-sm transition-colors hover:bg-muted/30 px-1 -mx-1">
                     <div>
                       <div className="text-sm font-medium">{slot.participants?.name || 'Unknown'}</div>
                       <div className="text-xs text-muted-foreground">{formatDateTime(slot.starts_at)}</div>
@@ -271,7 +271,7 @@ export default function Dashboard() {
         <Card className="col-span-2 shadow-none">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold">Studies</CardTitle>
+              <CardTitle>Studies</CardTitle>
               <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => navigate('/studies')}>
                 View all <ArrowRight className="h-3 w-3" />
               </Button>
@@ -289,21 +289,21 @@ export default function Dashboard() {
               </div>
             ) : studyData.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 gap-3">
-                <p className="text-sm text-muted-foreground text-center">No studies yet.<br/>Create one to start recruiting.</p>
+                <p className="text-sm text-muted-foreground text-center">Nothing here yet.<br/>Create a study to start recruiting.</p>
                 <Button size="sm" onClick={() => navigate('/studies')}><Plus className="h-3.5 w-3.5 mr-1" /> Create study</Button>
               </div>
             ) : (
               <div className="space-y-4">
                 {studyData.map(s => (
-                  <div key={s.id} className="cursor-pointer group" onClick={() => navigate(`/studies/${s.id}`)}>
+                  <div key={s.id} className="cursor-pointer group rounded-md transition-colors hover:bg-muted/30 -mx-2 px-2 py-1" onClick={() => navigate(`/studies/${s.id}`)}>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-sm font-medium truncate flex-1 group-hover:text-primary transition-colors">{s.name}</span>
                       <div className="flex items-center gap-1.5 ml-2 shrink-0">
                         <span className="text-xs text-muted-foreground tabular-nums">{s.done}/{s.target}</span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
-                          s.status === 'full'   ? 'bg-green-50 text-green-700 border-green-200' :
+                          s.status === 'full'   ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                           s.status === 'draft'  ? 'bg-muted text-muted-foreground border-border' :
-                                                  'bg-blue-50 text-blue-700 border-blue-200'
+                                                  'bg-sky-50 text-sky-700 border-sky-200'
                         }`}>
                           {s.status === 'full' ? 'Full' : s.status === 'draft' ? 'Draft' : 'Active'}
                         </span>

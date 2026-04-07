@@ -58,6 +58,7 @@ function AppBreadcrumb() {
 }
 
 export default function Layout({ children }) {
+  const { pathname } = useLocation()
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -67,8 +68,8 @@ export default function Layout({ children }) {
           <Separator orientation="vertical" className="h-4" />
           <AppBreadcrumb />
         </header>
-        <main className="flex-1 min-h-screen bg-gray-50/40">
-          <div className="max-w-6xl mx-auto">
+        <main className="flex-1 min-h-screen bg-background">
+          <div key={pathname} className="max-w-6xl mx-auto animate-fade-up">
             {children}
           </div>
         </main>
