@@ -270,7 +270,7 @@ export default function IntakeForm() {
           <DragOverlay dropAnimation={null}>
             {activePaletteType && (
               <div style={{
-                background: 'var(--bg-card)', border: '2px dashed var(--accent)',
+                background: 'var(--bg-base)', border: '2px dashed var(--accent)',
                 borderRadius: 8, padding: '8px 12px', fontSize: 13, fontWeight: 500,
                 color: 'var(--accent-light)', boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                 cursor: 'grabbing', opacity: 0.9,
@@ -280,7 +280,7 @@ export default function IntakeForm() {
             )}
             {activeField && (
               <div style={{
-                background: 'var(--bg-card)', border: '2px dashed var(--accent)',
+                background: 'var(--bg-base)', border: '2px dashed var(--accent)',
                 borderRadius: 8, padding: '10px 12px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                 opacity: 0.85, cursor: 'grabbing', fontSize: 13,

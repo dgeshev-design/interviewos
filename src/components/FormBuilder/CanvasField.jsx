@@ -133,7 +133,7 @@ export default function CanvasField({ field, onUpdate, onRemove, onChangeType })
           borderRadius: 8,
           padding: '10px 12px',
           border: hovered || editOpen ? '2px dashed var(--accent)' : '2px solid transparent',
-          background: hovered || editOpen ? 'var(--accent-glow)' : 'var(--bg-card)',
+          background: hovered || editOpen ? 'var(--accent-glow)' : 'var(--bg-base)',
           transition: 'border-color 0.15s, background 0.15s',
           outline: hovered || editOpen ? '0' : '1px solid var(--border-base)',
           outlineOffset: -1,
@@ -145,7 +145,7 @@ export default function CanvasField({ field, onUpdate, onRemove, onChangeType })
             style={{
               position: 'absolute', top: -14, right: 8,
               display: 'flex', alignItems: 'center', gap: 2,
-              background: 'var(--bg-card)',
+              background: 'var(--bg-base)',
               border: '1px solid var(--border-base)',
               borderRadius: 6, padding: '2px 4px',
               boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
@@ -173,7 +173,7 @@ export default function CanvasField({ field, onUpdate, onRemove, onChangeType })
                   align="end"
                   sideOffset={8}
                   style={{
-                    background: 'var(--bg-card)', border: '1px solid var(--border-base)',
+                    background: 'var(--bg-base)', border: '1px solid var(--border-base)',
                     borderRadius: 10, padding: 16,
                     boxShadow: '0 8px 32px rgba(0,0,0,0.18)', zIndex: 100,
                   }}
@@ -204,7 +204,7 @@ export default function CanvasField({ field, onUpdate, onRemove, onChangeType })
                   <DropdownMenu.Content
                     sideOffset={6}
                     style={{
-                      background: 'var(--bg-card)', border: '1px solid var(--border-base)',
+                      background: 'var(--bg-base)', border: '1px solid var(--border-base)',
                       borderRadius: 8, padding: 4, minWidth: 140,
                       boxShadow: '0 6px 24px rgba(0,0,0,0.14)', zIndex: 100,
                     }}

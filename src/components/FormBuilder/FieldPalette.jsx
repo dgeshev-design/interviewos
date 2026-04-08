@@ -2,17 +2,17 @@ import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 
 const PALETTE_TYPES = [
-  { type: 'text',     label: 'Text',      icon: '𝐓',  preview: 'Short answer' },
-  { type: 'email',    label: 'Email',     icon: '✉',  preview: 'email@example.com' },
-  { type: 'tel',      label: 'Phone',     icon: '📞', preview: '+1 (555) 000-0000' },
-  { type: 'number',   label: 'Number',    icon: '#',  preview: '0' },
-  { type: 'textarea', label: 'Long text', icon: '¶',  preview: 'Paragraph answer…' },
-  { type: 'select',   label: 'Dropdown',  icon: '▾',  preview: 'Select an option' },
-  { type: 'heading',  label: 'Heading',   icon: 'H',  preview: 'Section title', isStatic: true },
-  { type: 'divider',  label: 'Divider',   icon: '—',  preview: '────────────', isStatic: true },
+  { type: 'text',     label: 'Text',      preview: 'Short answer' },
+  { type: 'email',    label: 'Email',     preview: 'email@example.com' },
+  { type: 'tel',      label: 'Phone',     preview: '+1 (555) 000-0000' },
+  { type: 'number',   label: 'Number',    preview: '0' },
+  { type: 'textarea', label: 'Long text', preview: 'Paragraph answer…' },
+  { type: 'select',   label: 'Dropdown',  preview: 'Select an option' },
+  { type: 'heading',  label: 'Heading',   preview: 'Section title' },
+  { type: 'divider',  label: 'Divider',   preview: '─────────────' },
 ]
 
-function PaletteBlock({ type, label, icon, preview }) {
+function PaletteBlock({ type, label, preview }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `palette-${type}`,
     data: { type, isNew: true },
@@ -29,14 +29,31 @@ function PaletteBlock({ type, label, icon, preview }) {
         cursor: 'grab',
         userSelect: 'none',
         touchAction: 'none',
+        background: 'var(--bg-base)',
+        border: '1px solid var(--border-base)',
+        borderRadius: 8,
+        padding: '10px 12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        transition: 'border-color 0.12s, background 0.12s',
       }}
-      className="flex flex-col gap-1.5 rounded-lg border border-[var(--border-base)] bg-[var(--bg-card)] p-3 hover:border-[var(--accent)] hover:bg-[var(--accent-glow)] transition-colors group"
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = 'var(--accent)'
+        e.currentTarget.style.background = 'var(--accent-glow)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = 'var(--border-base)'
+        e.currentTarget.style.background = 'var(--bg-base)'
+      }}
     >
-      <div className="flex items-center gap-2">
-        <span className="text-[13px] font-bold text-[var(--text-secondary)] group-hover:text-[var(--accent-light)] w-4 text-center leading-none">{icon}</span>
-        <span className="text-[12.5px] font-medium text-[var(--text-primary)]">{label}</span>
-      </div>
-      <div className="text-[11px] text-[var(--text-tertiary)] truncate border border-dashed border-[var(--border-subtle)] rounded px-1.5 py-0.5 bg-[var(--bg-base)]">
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
+      <div style={{
+        fontSize: 11, color: 'var(--text-tertiary)',
+        background: 'var(--bg-raised)', borderRadius: 4,
+        padding: '3px 6px', border: '1px dashed var(--border-base)',
+        overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+      }}>
         {preview}
       </div>
     </div>
@@ -45,18 +62,18 @@ function PaletteBlock({ type, label, icon, preview }) {
 
 export default function FieldPalette() {
   return (
-    <div className="flex flex-col gap-3 w-[200px] flex-shrink-0">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] px-0.5">
+    <div style={{ width: 180, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-tertiary)' }}>
         Elements
       </div>
-      <div className="grid grid-cols-1 gap-2">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {PALETTE_TYPES.map(p => (
           <PaletteBlock key={p.type} {...p} />
         ))}
       </div>
-      <p className="text-[11px] text-[var(--text-tertiary)] text-center mt-1">
-        Drag to add
-      </p>
+      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 4 }}>
+        Drag to add →
+      </div>
     </div>
   )
 }
