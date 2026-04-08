@@ -16,7 +16,7 @@ import { Progress } from '@/components/ui/progress'
 import StatusBadge from '@/components/ui/status-badge'
 import PageHeader from '@/components/layout/PageHeader'
 import { formatDateTime, cn } from '@/lib/utils'
-import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2, Sparkles, Quote, Monitor, Smartphone, RotateCcw } from 'lucide-react'
+import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2, Sparkles, Quote, Monitor, Smartphone, RotateCcw, Save } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 import NotionEditor from '@/components/ui/notion-editor'
@@ -809,6 +809,24 @@ export default function StudyDetail() {
                         </Button>
                       </div>
                     </div>
+                    {/* Step progress bar */}
+                    {stepCount > 1 && (
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs text-muted-foreground">Step {activeStep} of {stepCount}</span>
+                        </div>
+                        <div className="flex gap-1">
+                          {Array.from({ length: stepCount }, (_, i) => i + 1).map(s => (
+                            <div
+                              key={s}
+                              onClick={() => setActiveStep(s)}
+                              className="flex-1 h-1.5 rounded-full cursor-pointer transition-colors"
+                              style={{ background: s === activeStep ? 'var(--accent, #6366f1)' : s < activeStep ? 'var(--accent, #6366f1)' : 'var(--border, #e4e4e7)', opacity: s < activeStep ? 0.4 : 1 }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1 flex-wrap">
                       {Array.from({ length: stepCount }, (_, i) => i + 1).map(s => (
                         <div key={s} className="flex items-center gap-1">
@@ -926,6 +944,9 @@ export default function StudyDetail() {
                   </div>
                   <Button variant="ghost" size="icon" title="Refresh preview" onClick={() => setIframeKey(k => k + 1)}>
                     <RotateCcw className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" onClick={() => saveForm({ fields: form.fields, step_titles: form.step_titles, primary_color: form.primary_color, booking_config: form.booking_config })} disabled={savingForm}>
+                    <Save className="h-4 w-4 mr-1.5" /> {savingForm ? 'Saving…' : 'Save'}
                   </Button>
                   <Button variant="outline" onClick={() => window.open(publicUrl, '_blank')}>
                     <ExternalLink className="h-4 w-4 mr-1.5" /> Open
