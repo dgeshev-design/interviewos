@@ -1,4 +1,9 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import {
+  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  closestCenter,
+} from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
 import { useFormFields } from '@/hooks/useFormFields'
 import { useSlots } from '@/hooks/useSlots'
 import { usePublishedForm } from '@/hooks/usePublishedForm'
@@ -6,8 +11,10 @@ import { useApp } from '@/context/AppContext'
 import Modal from '@/components/Modal'
 import Icon from '@/components/Icon'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import FieldPalette from '@/components/FormBuilder/FieldPalette'
+import FieldCanvas from '@/components/FormBuilder/FieldCanvas'
+import DesignPanel from '@/components/FormBuilder/DesignPanel'
 
-const EMPTY_FIELD = { label: '', field_type: 'text', required: false, options: '' }
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
 const fmtSlot = (iso) => new Date(iso).toLocaleDateString('en-GB', {
@@ -17,15 +24,14 @@ const fmtSlot = (iso) => new Date(iso).toLocaleDateString('en-GB', {
 
 export default function IntakeForm() {
   const { workspace }                                                = useApp()
-  const { fields, loading, add, remove, reorder }                    = useFormFields()
+  const { fields, loading, add, update, remove, reorder }           = useFormFields()
   const { slots, addSlot, removeSlot, refetch: refetchSlots }        = useSlots()
-  const { publishedForm, loading: pubLoading, publish, unpublish }   = usePublishedForm()
+  const { publishedForm, loading: pubLoading, publish, unpublish,
+          styleConfig, saveStyle }                                   = usePublishedForm()
 
   const [tab, setTab]               = useState('builder')
-  const [showAdd, setShowAdd]       = useState(false)
   const [showSlot, setShowSlot]     = useState(false)
   const [showWindow, setShowWindow] = useState(false)
-  const [newF, setNewF]             = useState(EMPTY_FIELD)
   const [newSlot, setNewSlot]       = useState({ starts_at: '', duration_minutes: 60, meet_link: '' })
   const [preview, setPreview]       = useState({})
   const [copied, setCopied]         = useState(false)
@@ -33,8 +39,12 @@ export default function IntakeForm() {
   const [generating, setGenerating] = useState(false)
   const [genResult, setGenResult]   = useState(null)
   const [confirmState, setConfirmState] = useState(null)
+  const [activeId, setActiveId]     = useState(null)
+  const [styleLocal, setStyleLocal] = useState(null)
+  const [savingStyle, setSavingStyle] = useState(false)
 
-  // Availability window state
+  const currentStyle = styleLocal ?? styleConfig
+
   const [window_, setWindow_] = useState({
     dateFrom:        '',
     dateTo:          '',
@@ -49,6 +59,66 @@ export default function IntakeForm() {
     ? `${window.location.origin}/f/${publishedForm.id}`
     : null
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
+
+  // ── Drag handlers ──────────────────────────────────────────────────────────
+  const handleDragStart = useCallback(({ active }) => {
+    setActiveId(active.id)
+  }, [])
+
+  const handleDragEnd = useCallback(async ({ active, over }) => {
+    setActiveId(null)
+    if (!over) return
+
+    const isFromPalette = active.data.current?.isNew
+    const overCanvas    = over.id === 'canvas' || fields.some(f => f.id === over.id)
+
+    if (isFromPalette && overCanvas) {
+      // Add new field from palette
+      const type = active.data.current.type
+      const isStatic = type === 'heading' || type === 'divider'
+      await add({
+        label:      isStatic ? (type === 'heading' ? 'Section heading' : '') : '',
+        field_type: type,
+        required:   false,
+        options:    [],
+      })
+      return
+    }
+
+    // Reorder within canvas
+    if (!isFromPalette && over && active.id !== over.id) {
+      const oldIndex = fields.findIndex(f => f.id === active.id)
+      const newIndex = fields.findIndex(f => f.id === over.id)
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reordered = arrayMove(fields, oldIndex, newIndex)
+        // Optimistic update is handled by reorder calls
+        await Promise.all(
+          reordered.map((f, i) => reorder && update(f.id, { position: i }))
+        )
+      }
+    }
+  }, [fields, add, update, reorder])
+
+  // ── Field actions ──────────────────────────────────────────────────────────
+  const handleUpdate = useCallback(async (id, changes) => {
+    try { await update(id, changes) }
+    catch (e) { alert(e.message) }
+  }, [update])
+
+  const handleRemove = useCallback(async (id) => {
+    try { await remove(id) }
+    catch (e) { alert(e.message) }
+  }, [remove])
+
+  const handleChangeType = useCallback(async (id, newType) => {
+    try { await update(id, { field_type: newType }) }
+    catch (e) { alert(e.message) }
+  }, [update])
+
+  // ── Publish ────────────────────────────────────────────────────────────────
   const handlePublish = async () => {
     setPublishing(true)
     try { await publish() }
@@ -69,19 +139,7 @@ export default function IntakeForm() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleAddField = async () => {
-    try {
-      await add({
-        label:      newF.label,
-        field_type: newF.field_type,
-        required:   newF.required,
-        options:    newF.options ? newF.options.split(',').map(s => s.trim()) : [],
-      })
-      setNewF(EMPTY_FIELD)
-      setShowAdd(false)
-    } catch (e) { alert(e.message) }
-  }
-
+  // ── Slots ──────────────────────────────────────────────────────────────────
   const handleAddSlot = async () => {
     if (!newSlot.starts_at) return
     try {
@@ -118,6 +176,18 @@ export default function IntakeForm() {
     setGenerating(false)
   }
 
+  // ── Design ─────────────────────────────────────────────────────────────────
+  const handleSaveStyle = async () => {
+    setSavingStyle(true)
+    try { await saveStyle(currentStyle) }
+    catch (e) { alert(e.message) }
+    setSavingStyle(false)
+  }
+
+  // ── Drag overlay content ───────────────────────────────────────────────────
+  const activeField = activeId ? fields.find(f => f.id === activeId) : null
+  const activePaletteType = activeId?.startsWith('palette-') ? activeId.replace('palette-', '') : null
+
   return (
     <div className="page">
       <div className="page-header">
@@ -140,9 +210,6 @@ export default function IntakeForm() {
               <Icon name="eye" size={14} /> {publishing ? 'Publishing…' : 'Publish form'}
             </button>
           )}
-          <button className="btn btn-ghost" onClick={() => setShowAdd(true)}>
-            <Icon name="plus" size={14} /> Add field
-          </button>
         </div>
       </div>
 
@@ -169,44 +236,74 @@ export default function IntakeForm() {
 
       {/* Tabs */}
       <div className="tabs mt-2" style={{ width: 'fit-content', marginBottom: 20 }}>
-        <button className={`tab ${tab === 'builder' ? 'active' : ''}`} onClick={() => setTab('builder')}>Form fields</button>
+        <button className={`tab ${tab === 'builder' ? 'active' : ''}`} onClick={() => setTab('builder')}>Fields</button>
+        <button className={`tab ${tab === 'design'  ? 'active' : ''}`} onClick={() => setTab('design')}>Design</button>
         <button className={`tab ${tab === 'slots'   ? 'active' : ''}`} onClick={() => setTab('slots')}>
           Booking slots {slots.length > 0 && `(${slots.length})`}
         </button>
         <button className={`tab ${tab === 'preview' ? 'active' : ''}`} onClick={() => setTab('preview')}>Preview</button>
       </div>
 
-      {/* Builder */}
+      {/* ── BUILDER ─────────────────────────────────────────────────────────── */}
       {tab === 'builder' && (
-        <div className="flex-col gap-3">
-          {loading && <p className="muted">Loading fields…</p>}
-          {!loading && fields.length === 0 && (
-            <div className="card" style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 48 }}>
-              No fields yet. Add your first field to get started.
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          {loading ? (
+            <p className="muted">Loading fields…</p>
+          ) : (
+            <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+              <FieldPalette />
+              <FieldCanvas
+                fields={fields}
+                onUpdate={handleUpdate}
+                onRemove={handleRemove}
+                onChangeType={handleChangeType}
+                activeId={activeId}
+              />
             </div>
           )}
-          {fields.map((f, i) => (
-            <div key={f.id} className="card flex items-center gap-3">
-              <div style={{ flex: 1 }}>
-                <div className="flex items-center gap-2">
-                  <strong style={{ fontSize: 13.5 }}>{f.label}</strong>
-                  {f.required && <span className="badge badge-red" style={{ fontSize: 10, padding: '1px 6px' }}>Required</span>}
-                </div>
-                <div className="text-xs muted mt-1">
-                  {f.field_type}{f.options?.length ? ` · ${f.options.join(', ')}` : ''}
-                </div>
+
+          <DragOverlay dropAnimation={null}>
+            {activePaletteType && (
+              <div style={{
+                background: 'var(--bg-card)', border: '2px dashed var(--accent)',
+                borderRadius: 8, padding: '8px 12px', fontSize: 13, fontWeight: 500,
+                color: 'var(--accent-light)', boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                cursor: 'grabbing', opacity: 0.9,
+              }}>
+                + {activePaletteType.charAt(0).toUpperCase() + activePaletteType.slice(1)} field
               </div>
-              <div className="flex gap-1">
-                <button className="btn btn-ghost btn-icon btn-sm" onClick={() => reorder(f.id, -1)} disabled={i === 0}>↑</button>
-                <button className="btn btn-ghost btn-icon btn-sm" onClick={() => reorder(f.id, 1)} disabled={i === fields.length - 1}>↓</button>
-                <button className="btn btn-danger btn-icon btn-sm" onClick={() => remove(f.id)}><Icon name="trash" size={12} /></button>
+            )}
+            {activeField && (
+              <div style={{
+                background: 'var(--bg-card)', border: '2px dashed var(--accent)',
+                borderRadius: 8, padding: '10px 12px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                opacity: 0.85, cursor: 'grabbing', fontSize: 13,
+                color: 'var(--text-primary)',
+              }}>
+                {activeField.label || activeField.field_type}
               </div>
-            </div>
-          ))}
-        </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       )}
 
-      {/* Slots */}
+      {/* ── DESIGN ──────────────────────────────────────────────────────────── */}
+      {tab === 'design' && (
+        <DesignPanel
+          style={currentStyle}
+          onChange={setStyleLocal}
+          onSave={handleSaveStyle}
+          saving={savingStyle}
+        />
+      )}
+
+      {/* ── SLOTS ───────────────────────────────────────────────────────────── */}
       {tab === 'slots' && (
         <div>
           <div className="flex items-center justify-between mb-4">
@@ -251,72 +348,75 @@ export default function IntakeForm() {
         </div>
       )}
 
-      {/* Preview */}
-      {tab === 'preview' && (
-        <div className="card" style={{ maxWidth: 520 }}>
-          <h2 style={{ marginBottom: 4 }}>Participation form</h2>
-          <p className="muted text-sm mt-1" style={{ marginBottom: 24 }}>Complete this short form to register for a research session.</p>
-          <div className="flex-col gap-4">
-            {fields.map(f => (
-              <div key={f.id} className="field">
-                <label>
-                  {f.label}
-                  {f.required && <span style={{ color: 'var(--red)', marginLeft: 3 }}>*</span>}
-                </label>
-                {f.field_type === 'select' ? (
-                  <select value={preview[f.id] || ''} onChange={e => setPreview(p => ({ ...p, [f.id]: e.target.value }))}>
-                    <option value="">Select…</option>
-                    {f.options?.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                ) : f.field_type === 'textarea' ? (
-                  <textarea value={preview[f.id] || ''} onChange={e => setPreview(p => ({ ...p, [f.id]: e.target.value }))} />
-                ) : (
-                  <input type={f.field_type} value={preview[f.id] || ''} onChange={e => setPreview(p => ({ ...p, [f.id]: e.target.value }))} />
-                )}
-              </div>
-            ))}
-          </div>
-          {fields.length > 0 && (
-            <button className="btn btn-primary w-full mt-6" style={{ justifyContent: 'center' }}>
-              Continue to booking →
-            </button>
-          )}
-        </div>
-      )}
+      {/* ── PREVIEW ─────────────────────────────────────────────────────────── */}
+      {tab === 'preview' && (() => {
+        const s = currentStyle
+        const spacingPad = s.spacing === 'compact' ? 24 : s.spacing === 'relaxed' ? 48 : 36
+        const cardBorder = s.borderStyle === 'border'
+          ? `1px solid ${s.bgColor === '#18181b' ? '#3f3f46' : '#e4e4e7'}`
+          : 'none'
+        const cardShadow = s.borderStyle === 'shadow' ? '0 4px 24px rgba(0,0,0,0.1)' : 'none'
 
-      {/* Add field modal */}
-      {showAdd && (
-        <Modal title="Add form field" onClose={() => setShowAdd(false)}>
-          <div className="flex-col gap-3">
-            <div className="field">
-              <label>Field label</label>
-              <input placeholder="e.g. Full name" value={newF.label} onChange={e => setNewF(f => ({ ...f, label: e.target.value }))} />
-            </div>
-            <div className="field">
-              <label>Field type</label>
-              <select value={newF.field_type} onChange={e => setNewF(f => ({ ...f, field_type: e.target.value }))}>
-                {['text','email','tel','number','textarea','select'].map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            {newF.field_type === 'select' && (
-              <div className="field">
-                <label>Options (comma-separated)</label>
-                <input placeholder="Option A, Option B" value={newF.options} onChange={e => setNewF(f => ({ ...f, options: e.target.value }))} />
+        return (
+          <div style={{ background: s.bgColor, borderRadius: 12, padding: spacingPad, minHeight: 400 }}>
+            {s.showHeaderImage && s.headerImageUrl && (
+              <div style={{ marginBottom: spacingPad, borderRadius: 10, overflow: 'hidden', maxWidth: 520, margin: '0 auto', marginBottom: spacingPad }}>
+                <img src={s.headerImageUrl} alt="Header" style={{ width: '100%', maxHeight: 200, objectFit: 'cover', display: 'block' }} />
               </div>
             )}
-            <label className="flex items-center gap-2" style={{ cursor: 'pointer', fontSize: 13.5 }}>
-              <input type="checkbox" checked={newF.required} onChange={e => setNewF(f => ({ ...f, required: e.target.checked }))} style={{ width: 'auto' }} />
-              Required field
-            </label>
+            <div style={{
+              background: s.cardBg, border: cardBorder,
+              borderRadius: 16, padding: spacingPad,
+              maxWidth: 520, margin: '0 auto',
+              boxShadow: cardShadow,
+            }}>
+              {s.showLogo && s.logoUrl && (
+                <img src={s.logoUrl} alt="Logo" style={{ height: 32, marginBottom: spacingPad / 2, objectFit: 'contain' }} />
+              )}
+              <h2 style={{ marginBottom: 4, color: s.bgColor === '#18181b' ? '#fff' : '#09090b' }}>Participation form</h2>
+              <p style={{ fontSize: 13.5, color: '#71717a', marginBottom: spacingPad }}>
+                Complete this short form to register for a research session.
+              </p>
+              <div className="flex-col gap-4">
+                {fields.map(f => {
+                  if (f.field_type === 'heading') return (
+                    <div key={f.id} style={{ fontSize: 17, fontWeight: 600, color: s.bgColor === '#18181b' ? '#fff' : '#09090b', paddingTop: 4 }}>{f.label}</div>
+                  )
+                  if (f.field_type === 'divider') return (
+                    <hr key={f.id} style={{ border: 'none', borderTop: '1px solid #e4e4e7' }} />
+                  )
+                  return (
+                    <div key={f.id} className="field">
+                      <label>
+                        {f.label}
+                        {f.required && <span style={{ color: s.accentColor, marginLeft: 3 }}>*</span>}
+                      </label>
+                      {f.field_type === 'select' ? (
+                        <select value={preview[f.id] || ''} onChange={e => setPreview(p => ({ ...p, [f.id]: e.target.value }))}>
+                          <option value="">Select…</option>
+                          {f.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : f.field_type === 'textarea' ? (
+                        <textarea value={preview[f.id] || ''} onChange={e => setPreview(p => ({ ...p, [f.id]: e.target.value }))} />
+                      ) : (
+                        <input type={f.field_type} value={preview[f.id] || ''} onChange={e => setPreview(p => ({ ...p, [f.id]: e.target.value }))} />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {fields.filter(f => f.field_type !== 'heading' && f.field_type !== 'divider').length > 0 && (
+                <button
+                  className="btn w-full mt-6"
+                  style={{ justifyContent: 'center', background: s.accentColor, color: '#fff', border: 'none' }}
+                >
+                  {s.buttonText || 'Continue to booking →'}
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex gap-3 mt-4" style={{ justifyContent: 'flex-end' }}>
-            <button className="btn btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleAddField} disabled={!newF.label}>
-              <Icon name="plus" size={14} /> Add field
-            </button>
-          </div>
-        </Modal>
-      )}
+        )
+      })()}
 
       {/* Add slot modal */}
       {showSlot && (
@@ -345,6 +445,7 @@ export default function IntakeForm() {
           </div>
         </Modal>
       )}
+
       {/* Availability window modal */}
       {showWindow && (
         <Modal title="Set availability window" onClose={() => setShowWindow(false)} maxWidth={560}>
@@ -402,8 +503,6 @@ export default function IntakeForm() {
                 ))}
               </div>
             </div>
-
-            {/* Preview count */}
             {window_.dateFrom && window_.dateTo && window_.daysOfWeek.length > 0 && (
               <div style={{ background: 'var(--bg-raised)', borderRadius: 'var(--r-md)', padding: '10px 14px', fontSize: 13, color: 'var(--text-secondary)' }}>
                 {genResult !== null
