@@ -16,10 +16,7 @@ import { Progress } from '@/components/ui/progress'
 import StatusBadge from '@/components/ui/status-badge'
 import PageHeader from '@/components/layout/PageHeader'
 import { formatDateTime, cn } from '@/lib/utils'
-import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2, Sparkles, Quote, Monitor, Smartphone, RotateCcw, GripVertical } from 'lucide-react'
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core'
-import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { Plus, Search, ArrowLeft, Star, ExternalLink, Copy, Check, Trash2, Edit2, ChevronUp, ChevronDown, Upload, Share2, Sparkles, Quote, Monitor, Smartphone, RotateCcw } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import PhoneCountryPicker from '@/components/ui/PhoneCountryPicker'
 import NotionEditor from '@/components/ui/notion-editor'
@@ -60,105 +57,6 @@ const EMPTY_FIELD = {
   participant_field: '',
 }
 
-
-function SortableFieldRow({ field, onEdit, onDelete, onChangeType }) {
-  const [hovered, setHovered] = useState(false)
-  const [changeOpen, setChangeOpen] = useState(false)
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id })
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { if (!changeOpen) setHovered(false) }}
-    >
-      <div className={cn(
-        'relative flex items-center gap-2 px-2.5 py-2.5 rounded-md border transition-all',
-        hovered || changeOpen
-          ? 'border-primary/60 bg-primary/5 outline outline-2 outline-primary/20 outline-offset-0'
-          : 'border-border bg-background hover:bg-muted/10'
-      )}>
-        {/* Drag handle */}
-        <button
-          {...listeners} {...attributes}
-          className="shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground touch-none"
-          style={{ touchAction: 'none' }}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-
-        {/* Field info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs font-medium truncate max-w-[110px]">{field.label || <span className="text-muted-foreground italic">Untitled</span>}</span>
-            {field.system && <Badge className="text-[9px] px-1 py-0 bg-blue-50 text-blue-600 border-blue-200 h-4">System</Badge>}
-            {field.required && <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Req</Badge>}
-            {field.is_screener && <Badge className="text-[9px] px-1 py-0 bg-amber-100 text-amber-700 border-amber-200 h-4">Screen</Badge>}
-          </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">
-            {FIELD_TYPES.find(t => t.value === field.type)?.label || field.type}
-          </div>
-        </div>
-
-        {/* Hover action bar */}
-        {(hovered || changeOpen) && (
-          <div className="flex items-center gap-0.5 shrink-0">
-            {/* Edit */}
-            <button
-              onClick={onEdit}
-              title="Edit field"
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Edit2 className="h-3 w-3" />
-            </button>
-
-            {/* Change type */}
-            {!field.system && (
-              <div className="relative">
-                <button
-                  onClick={() => setChangeOpen(o => !o)}
-                  title="Change type"
-                  className={cn('h-6 w-6 flex items-center justify-center rounded transition-colors text-muted-foreground', changeOpen ? 'bg-primary/10 text-primary' : 'hover:bg-muted hover:text-foreground')}
-                >
-                  <ChevronDown className="h-3 w-3" />
-                </button>
-                {changeOpen && (
-                  <div
-                    className="absolute right-0 top-7 z-50 bg-background border rounded-lg shadow-lg py-1 w-40"
-                    onMouseLeave={() => { setChangeOpen(false); setHovered(false) }}
-                  >
-                    <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Change to</div>
-                    {FIELD_TYPES.filter(t => t.value !== field.type).map(t => (
-                      <button
-                        key={t.value}
-                        onClick={() => { onChangeType(t.value); setChangeOpen(false); setHovered(false) }}
-                        className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors"
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Delete */}
-            {!field.system && (
-              <button
-                onClick={onDelete}
-                title="Delete field"
-                className="h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 
 export default function StudyDetail() {
   const { studyId } = useParams()
@@ -417,29 +315,6 @@ export default function StudyDetail() {
     const otherFields = all.filter(f => (f.step || 1) !== activeStep)
     await saveForm({ fields: [...otherFields, ...stepFields] })
   }
-
-  const addFromPalette = useCallback(async (type) => {
-    const newField = { ...EMPTY_FIELD, id: crypto.randomUUID(), type, step: activeStep }
-    if (type === 'consent_checks') newField.consent_items = [{ id: crypto.randomUUID(), text: '' }]
-    const next = [...(form?.fields || []), newField]
-    await saveForm({ fields: next })
-  }, [form, activeStep, saveForm])
-
-  const [dndActiveId, setDndActiveId] = useState(null)
-  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
-
-  const handleDragEnd = useCallback(async ({ active, over }) => {
-    setDndActiveId(null)
-    if (!over || active.id === over.id) return
-    const all = [...(form?.fields || [])]
-    const stepFields = all.filter(f => (f.step || 1) === activeStep)
-    const oldIdx = stepFields.findIndex(f => f.id === active.id)
-    const newIdx = stepFields.findIndex(f => f.id === over.id)
-    if (oldIdx === -1 || newIdx === -1) return
-    const reordered = arrayMove(stepFields, oldIdx, newIdx)
-    const others = all.filter(f => (f.step || 1) !== activeStep)
-    await saveForm({ fields: [...others, ...reordered] })
-  }, [form, activeStep, saveForm])
 
   const addOption = () => {
     const v = newOption.trim()
@@ -919,105 +794,109 @@ export default function StudyDetail() {
                 </TabsContent>
 
                 {/* Fields */}
-                <TabsContent value="fields" className="mt-0 pb-0 p-0">
-                  <div className="flex" style={{ minHeight: 420 }}>
-
-                    {/* Palette */}
-                    <div className="w-[148px] shrink-0 border-r bg-muted/30 p-2 space-y-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1 pb-1">Add field</p>
-                      {FIELD_TYPES.map(t => (
-                        <button
-                          key={t.value}
-                          onClick={() => addFromPalette(t.value)}
-                          className="w-full text-left px-2.5 py-2 rounded-md text-xs font-medium text-foreground hover:bg-primary hover:text-primary-foreground transition-colors border border-transparent hover:border-primary/20"
-                        >
-                          {t.label}
-                        </button>
+                <TabsContent value="fields" className="mt-0 pb-8">
+                  <div className="px-4 py-4 border-b">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-semibold">Form fields</span>
+                      <div className="flex items-center gap-2">
+                        {stepCount < 6 && (
+                          <Button variant="outline" size="sm" onClick={addStep}>
+                            <Plus className="h-3.5 w-3.5 mr-1" /> Add step
+                          </Button>
+                        )}
+                        <Button size="sm" onClick={openNewField}>
+                          <Plus className="h-4 w-4 mr-1.5" /> Add field
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {Array.from({ length: stepCount }, (_, i) => i + 1).map(s => (
+                        <div key={s} className="flex items-center gap-1">
+                          <button
+                            onClick={() => setActiveStep(s)}
+                            className={cn(
+                              'px-3 py-1 rounded-md text-xs font-medium transition-colors',
+                              activeStep === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                            )}
+                          >
+                            {s === 1 ? (form.step_titles?.[0] || 'Step 1') : (form.step_titles?.[s - 1] || `Step ${s}`)}
+                          </button>
+                          {s > 1 && activeStep === s && (
+                            <button onClick={() => removeStep(s)} className="text-muted-foreground hover:text-destructive">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
                       ))}
                     </div>
-
-                    {/* Canvas */}
-                    <div className="flex-1 min-w-0 flex flex-col">
-                      {/* Step header */}
-                      <div className="px-3 py-3 border-b space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {Array.from({ length: stepCount }, (_, i) => i + 1).map(s => (
-                              <div key={s} className="flex items-center gap-0.5">
-                                <button
-                                  onClick={() => setActiveStep(s)}
-                                  className={cn('px-2.5 py-1 rounded text-xs font-medium transition-colors', activeStep === s ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground')}
-                                >
-                                  {form.step_titles?.[s - 1] || `Step ${s}`}
+                    <input
+                      className="mt-2 w-full text-xs border rounded px-2 py-1 text-muted-foreground focus:outline-none focus:border-primary"
+                      placeholder={`Step ${activeStep} title (optional)`}
+                      value={form.step_titles?.[activeStep - 1] || ''}
+                      onChange={e => {
+                        const titles = [...(form.step_titles || Array(stepCount).fill(''))]
+                        titles[activeStep - 1] = e.target.value
+                        setForm(f => ({ ...f, step_titles: titles }))
+                      }}
+                      onBlur={e => {
+                        const titles = [...(form.step_titles || Array(stepCount).fill(''))]
+                        titles[activeStep - 1] = e.target.value
+                        saveForm({ step_titles: titles })
+                      }}
+                    />
+                  </div>
+                  <div className="p-4">
+                    {(() => {
+                      const stepFields = (form.fields || []).filter(f => (f.step || 1) === activeStep)
+                      if (stepFields.length === 0) return (
+                        <div className="text-center py-8">
+                          <p className="text-sm text-muted-foreground mb-3">No fields in this step yet.</p>
+                          <Button size="sm" onClick={openNewField}><Plus className="h-4 w-4 mr-1.5" /> Add field</Button>
+                        </div>
+                      )
+                      return (
+                        <div className="space-y-2">
+                          {stepFields.map((f, idx) => (
+                            <div key={f.id} className="flex items-center gap-2 p-3 rounded-md border hover:bg-muted/20 transition-colors">
+                              <div className="flex flex-col gap-0.5 shrink-0">
+                                <button onClick={() => moveField(f.id, -1)} disabled={idx === 0}
+                                  className="text-muted-foreground hover:text-foreground disabled:opacity-25">
+                                  <ChevronUp className="h-3.5 w-3.5" />
                                 </button>
-                                {s > 1 && activeStep === s && (
-                                  <button onClick={() => removeStep(s)} className="text-muted-foreground hover:text-destructive ml-0.5">
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
+                                <button onClick={() => moveField(f.id, 1)} disabled={idx === stepFields.length - 1}
+                                  className="text-muted-foreground hover:text-foreground disabled:opacity-25">
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-medium truncate">{f.label}</span>
+                                  {f.system && <Badge className="text-[10px] px-1.5 py-0 bg-blue-50 text-blue-600 border-blue-200">System</Badge>}
+                                  {f.required && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Required</Badge>}
+                                  {f.is_screener && <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">Screener</Badge>}
+                                  {f.condition_field && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Conditional</Badge>}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {FIELD_TYPES.find(t => t.value === f.type)?.label || f.type}
+                                  {f.options?.length > 0 && ` · ${f.options.length} option${f.options.length !== 1 ? 's' : ''}`}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditField(f)}>
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </Button>
+                                {!f.system && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive"
+                                    onClick={() => setConfirmState({ title: 'Delete this field?', onConfirm: () => deleteField(f.id) })}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
                                 )}
                               </div>
-                            ))}
-                            {stepCount < 6 && (
-                              <button onClick={addStep} className="px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                                <Plus className="h-3 w-3 inline mr-0.5" />Step
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <input
-                          className="w-full text-xs border rounded px-2 py-1 text-muted-foreground focus:outline-none focus:border-primary bg-background"
-                          placeholder={`Step ${activeStep} title (optional)`}
-                          value={form.step_titles?.[activeStep - 1] || ''}
-                          onChange={e => { const t = [...(form.step_titles || Array(stepCount).fill(''))]; t[activeStep - 1] = e.target.value; setForm(f => ({ ...f, step_titles: t })) }}
-                          onBlur={e => { const t = [...(form.step_titles || Array(stepCount).fill(''))]; t[activeStep - 1] = e.target.value; saveForm({ step_titles: t }) }}
-                        />
-                      </div>
-
-                      {/* Sortable field list */}
-                      {(() => {
-                        const stepFields = (form.fields || []).filter(f => (f.step || 1) === activeStep)
-                        if (stepFields.length === 0) return (
-                          <div className="flex-1 flex flex-col items-center justify-center py-10 text-center px-4">
-                            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
-                              <Plus className="h-5 w-5 text-muted-foreground" />
                             </div>
-                            <p className="text-sm font-medium mb-1">No fields yet</p>
-                            <p className="text-xs text-muted-foreground">Click a field type on the left to add it</p>
-                          </div>
-                        )
-                        return (
-                          <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragStart={({ active }) => setDndActiveId(active.id)} onDragEnd={handleDragEnd}>
-                            <SortableContext items={stepFields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-                              <div className="p-2 space-y-1">
-                                {stepFields.map(f => (
-                                  <SortableFieldRow
-                                    key={f.id}
-                                    field={f}
-                                    onEdit={() => openEditField(f)}
-                                    onDelete={() => setConfirmState({ title: 'Delete this field?', onConfirm: () => deleteField(f.id) })}
-                                    onChangeType={newType => {
-                                      const next = (form.fields || []).map(x => x.id === f.id ? { ...x, type: newType, options: (newType === 'select' || newType === 'multi_select') ? (x.options || []) : [] } : x)
-                                      saveForm({ fields: next })
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            </SortableContext>
-                            <DragOverlay dropAnimation={null}>
-                              {dndActiveId && (() => {
-                                const f = (form.fields || []).find(x => x.id === dndActiveId)
-                                return f ? (
-                                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-md border bg-background shadow-lg text-sm font-medium opacity-90">
-                                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                    {f.label || FIELD_TYPES.find(t => t.value === f.type)?.label}
-                                  </div>
-                                ) : null
-                              })()}
-                            </DragOverlay>
-                          </DndContext>
-                        )
-                      })()}
-                    </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                 </TabsContent>
                 </div>
